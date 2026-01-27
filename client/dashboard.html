@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生中心 - 分科自选系统</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <!-- 导航栏 -->
+    <nav class="navbar">
+      <div class="container navbar-content">
+        <a href="/dashboard.html" class="navbar-brand">
+          📚 <span>分科自选系统</span>
+        </a>
+        <div class="navbar-nav">
+          <a href="/dashboard.html" class="nav-link active">首页</a>
+          <a href="/selection.html" class="nav-link">选科</a>
+          <div class="nav-user">
+            <div class="nav-user-avatar" id="userAvatar">U</div>
+            <span id="userName">用户</span>
+            <a href="#" id="logoutBtn" style="color: var(--text-muted); margin-left: 0.5rem;">退出</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <div class="container">
+        <!-- 欢迎卡片 -->
+        <div class="card mb-4 animate-fadeIn">
+          <h2 style="margin-bottom: 0.5rem;">👋 欢迎回来，<span id="welcomeName">同学</span></h2>
+          <p style="color: var(--text-secondary);" id="welcomeClass">班级信息</p>
+        </div>
+
+        <!-- 选科状态提示 -->
+        <div id="statusAlert" class="alert alert-info mb-4">
+          <span>⏳ 正在加载选科状态...</span>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+          <div class="stat-card animate-fadeIn">
+            <div class="stat-value" id="statPhysicsHistory">-</div>
+            <div class="stat-label">首选科目</div>
+          </div>
+          <div class="stat-card animate-fadeIn" style="animation-delay: 0.1s;">
+            <div class="stat-value" id="statElectives">-</div>
+            <div class="stat-label">再选科目</div>
+          </div>
+          <div class="stat-card animate-fadeIn" style="animation-delay: 0.2s;">
+            <div class="stat-value" id="statStatus">-</div>
+            <div class="stat-label">选科状态</div>
+          </div>
+        </div>
+
+        <!-- 我的选科详情 -->
+        <div class="card animate-fadeIn" style="animation-delay: 0.3s;">
+          <div class="card-header">
+            <h3 class="card-title">📋 我的选科</h3>
+            <a href="/selection.html" class="btn btn-primary btn-sm" id="goSelectBtn">去选科</a>
+          </div>
+
+          <div id="selectionContent">
+            <div class="loading">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 选科说明 -->
+        <div class="card mt-4 animate-fadeIn" style="animation-delay: 0.4s;">
+          <h3 class="card-title mb-2">📖 新高考 3+1+2 选科说明</h3>
+          <div style="color: var(--text-secondary); line-height: 1.8;">
+            <p><strong>3</strong>：语文、数学、外语（必考科目，无需选择）</p>
+            <p><strong>1</strong>：物理、历史（首选科目，二选一）</p>
+            <p><strong>2</strong>：化学、生物、政治、地理（再选科目，四选二）</p>
+            <div class="alert alert-warning mt-3">
+              <span>⚠️ 选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    // 检查登录状态
+    if (!isLoggedIn()) {
+      window.location.href = '/';
+    }
+
+    const user = getCurrentUser();
+    if (user && user.role === 'admin') {
+      window.location.href = '/admin.html';
+    }
+
+    // 初始化用户信息
+    if (user) {
+      document.getElementById('userAvatar').textContent = user.name.charAt(0);
+      document.getElementById('userName').textContent = user.name;
+      document.getElementById('welcomeName').textContent = user.name;
+      document.getElementById('welcomeClass').textContent = user.className ? `${user.className} | 学号: ${user.studentId}` : `学号: ${user.studentId}`;
+    }
+
+    // 退出登录
+    document.getElementById('logoutBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearToken();
+      window.location.href = '/';
+    });
+
+    // 加载选科状态
+    async function loadStatus() {
+      const statusAlert = document.getElementById('statusAlert');
+      const result = await api.selections.getStatus();
+
+      if (result.code === 200) {
+        const { open, message, startTime, endTime } = result.data;
+        if (open) {
+          statusAlert.className = 'alert alert-success mb-4';
+          statusAlert.innerHTML = `<span>✅ ${message} | 截止时间: ${endTime}</span>`;
+        } else {
+          statusAlert.className = 'alert alert-warning mb-4';
+          statusAlert.innerHTML = `<span>⏰ ${message}</span>`;
+        }
+      }
+    }
+
+    // 加载我的选科
+    async function loadMySelection() {
+      const content = document.getElementById('selectionContent');
+      const result = await api.selections.getMy();
+
+      if (result.code === 200 && result.data) {
+        const sel = result.data;
+
+        // 更新统计
+        document.getElementById('statPhysicsHistory').textContent = sel.physicsHistorySubject?.name || '-';
+        document.getElementById('statElectives').textContent =
+          (sel.electiveOneSubject?.name || '-') + ' + ' + (sel.electiveTwoSubject?.name || '-');
+
+        const statusMap = {
+          'draft': '草稿',
+          'submitted': '已提交',
+          'confirmed': '已确认',
+          'cancelled': '已取消'
+        };
+        document.getElementById('statStatus').textContent = statusMap[sel.status] || sel.status;
+        document.getElementById('goSelectBtn').textContent = '修改选科';
+
+        content.innerHTML = `
+          <div class="selection-summary">
+            <div class="selection-summary-title">已选科目组合</div>
+            <div class="selection-items">
+              <div class="selection-item">
+                <span class="selection-item-label">首选:</span>
+                <span class="selection-item-value">${sel.physicsHistorySubject?.name || '未选'}</span>
+              </div>
+              <div class="selection-item">
+                <span class="selection-item-label">再选1:</span>
+                <span class="selection-item-value">${sel.electiveOneSubject?.name || '未选'}</span>
+              </div>
+              <div class="selection-item">
+                <span class="selection-item-label">再选2:</span>
+                <span class="selection-item-value">${sel.electiveTwoSubject?.name || '未选'}</span>
+              </div>
+            </div>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">
+            提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString('zh-CN') : '-'}
+          </p>
+        `;
+      } else {
+        document.getElementById('statPhysicsHistory').textContent = '未选';
+        document.getElementById('statElectives').textContent = '未选';
+        document.getElementById('statStatus').textContent = '未提交';
+
+        content.innerHTML = `
+          <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <p style="font-size: 3rem; margin-bottom: 1rem;">📝</p>
+            <p>您还未提交选科，请点击右上角"去选科"按钮开始选择。</p>
+          </div>
+        `;
+      }
+    }
+
+    // 初始化
+    loadStatus();
+    loadMySelection();
+  </script>
+</body>
+</html>

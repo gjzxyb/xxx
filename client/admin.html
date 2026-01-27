@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 分科自选系统</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="page-wrapper">
+    <!-- 导航栏 -->
+    <nav class="navbar">
+      <div class="container navbar-content">
+        <a href="/admin.html" class="navbar-brand">
+          🛠️ <span>管理后台</span>
+        </a>
+        <div class="navbar-nav">
+          <div class="nav-user">
+            <div class="nav-user-avatar" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">A</div>
+            <span id="adminName">管理员</span>
+            <a href="#" id="logoutBtn" style="color: var(--text-muted); margin-left: 0.5rem;">退出</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <div class="container">
+        <!-- 标签页 -->
+        <div class="tabs">
+          <button class="tab active" data-tab="overview">📊 概览</button>
+          <button class="tab" data-tab="time">⏰ 时间设置</button>
+          <button class="tab" data-tab="subjects">📚 科目管理</button>
+          <button class="tab" data-tab="students">👥 学生列表</button>
+          <button class="tab" data-tab="stats">📋 选科列表</button>
+          <button class="tab" data-tab="combinations">🧩 组合统计</button>
+        </div>
+
+        <!-- 概览面板 -->
+        <div id="overviewPanel" class="tab-panel">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="statTotal">-</div>
+              <div class="stat-label">学生总数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statSubmitted">-</div>
+              <div class="stat-label">已选科</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statPending">-</div>
+              <div class="stat-label">未选科</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="statRate">-</div>
+              <div class="stat-label">完成率</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">快捷操作</h3>
+            </div>
+            <div class="flex gap-2" style="flex-wrap: wrap;">
+              <a href="#" class="btn btn-primary" id="exportBtn">📥 导出Excel</a>
+              <button class="btn btn-secondary" onclick="switchTab('time')">⏰ 设置时间</button>
+              <button class="btn btn-secondary" onclick="switchTab('subjects')">📚 管理科目</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 时间设置面板 -->
+        <div id="timePanel" class="tab-panel hidden">
+          <div class="card" style="max-width: 500px;">
+            <h3 class="card-title mb-3">⏰ 选科时间设置</h3>
+            <form id="timeForm">
+              <div class="form-group">
+                <label class="form-label">开始时间</label>
+                <input type="datetime-local" id="startTime" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">结束时间</label>
+                <input type="datetime-local" id="endTime" class="form-input" required>
+              </div>
+              <button type="submit" class="btn btn-success">保存设置</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 科目管理面板 -->
+        <div id="subjectsPanel" class="tab-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📚 科目管理</h3>
+              <button class="btn btn-primary btn-sm" id="addSubjectBtn">+ 添加科目</button>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>科目名称</th>
+                    <th>分类</th>
+                    <th>描述</th>
+                    <th>容量限制</th>
+                    <th>已选人数</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="subjectsTable">
+                  <tr><td colspan="7" class="text-center">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 学生列表面板 -->
+        <div id="studentsPanel" class="tab-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">👥 学生列表</h3>
+              <div class="flex gap-2">
+                <button class="btn btn-success btn-sm" id="addStudentBtn">+ 添加学生</button>
+                <button class="btn btn-primary btn-sm" id="importStudentsBtn">📤 导入学生</button>
+                <select id="classFilter" class="form-select" style="width: auto;">
+                  <option value="">全部班级</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>学号</th>
+                    <th>姓名</th>
+                    <th>班级</th>
+                    <th>状态</th>
+                    <th style="width: 180px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsTable">
+                  <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="studentsPagination" class="flex justify-between items-center mt-3"></div>
+          </div>
+        </div>
+
+        <!-- 选科列表面板 -->
+        <div id="statsPanel" class="tab-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📋 选科列表</h3>
+              <a href="#" class="btn btn-primary btn-sm" id="exportSelectionsBtn">📥 导出Excel</a>
+            </div>
+
+            <!-- 筛选器 -->
+            <div style="padding: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; background: var(--card-bg); border-bottom: 1px solid var(--border-color);">
+              <div>
+                <label style="display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">班级筛选</label>
+                <select id="selectionsClassFilter" class="form-input" style="width: 150px;">
+                  <option value="">全部班级</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">组合筛选</label>
+                <select id="selectionsCombinationFilter" class="form-input" style="width: 200px;">
+                  <option value="">全部组合</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 80px;">学号</th>
+                    <th style="width: 80px;">姓名</th>
+                    <th style="width: 100px;">班级</th>
+                    <th style="width: 200px;">选科组合</th>
+                    <th style="width: 80px;">状态</th>
+                    <th style="width: 140px;">提交时间</th>
+                  </tr>
+                </thead>
+                <tbody id="selectionsTable">
+                  <tr><td colspan="6" class="text-center">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="selectionsPagination" class="flex justify-between items-center mt-3"></div>
+          </div>
+        </div>
+
+        <!-- 组合统计面板 -->
+        <div id="combinationsPanel" class="tab-panel hidden">
+          <div class="stats-grid mb-4">
+            <div class="stat-card">
+              <div class="stat-value" id="comboTotal">-</div>
+              <div class="stat-label">已选科总人数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="comboPhysics">-</div>
+              <div class="stat-label">物理方向</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="comboHistory">-</div>
+              <div class="stat-label">历史方向</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="comboCount">-</div>
+              <div class="stat-label">组合数量</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">🧩 选科组合分布</h3>
+              <a href="#" class="btn btn-primary btn-sm" id="exportCombinationsBtn">📥 导出Excel</a>
+            </div>
+            <div id="combinationStats">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 添加/编辑科目弹窗 -->
+  <div class="modal-overlay" id="subjectModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">添加科目</h3>
+        <button class="modal-close" onclick="closeSubjectModal()">&times;</button>
+      </div>
+      <form id="subjectForm">
+        <input type="hidden" id="subjectId">
+        <div class="form-group">
+          <label class="form-label">科目名称</label>
+          <input type="text" id="subjectName" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">分类</label>
+          <select id="subjectCategory" class="form-select" required>
+            <option value="physics_history">物理/历史（首选）</option>
+            <option value="four_electives">四选二（再选）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">描述</label>
+          <input type="text" id="subjectDesc" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">最大容量（0表示不限）</label>
+          <input type="number" id="subjectCapacity" class="form-input" value="0" min="0">
+        </div>
+        <div class="flex justify-between">
+          <button type="button" class="btn btn-secondary" onclick="closeSubjectModal()">取消</button>
+          <button type="submit" class="btn btn-success">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 导入学生弹窗 -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📤 导入学生</h3>
+        <button class="modal-close" onclick="closeImportModal()">&times;</button>
+      </div>
+      <div style="padding: 1rem;">
+        <div class="form-group">
+          <label class="form-label">选择 Excel 文件</label>
+          <input type="file" id="importFile" class="form-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+            Excel 文件需包含以下列：<strong>学号</strong>（必填）、<strong>姓名</strong>（必填）、<strong>班级</strong>、<strong>密码</strong>（默认123456）
+          </p>
+        </div>
+        <div class="flex gap-2 mb-3">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="downloadTemplate()">📥 下载模板</button>
+        </div>
+        <div id="importPreview" style="display: none;">
+          <h4 style="margin-bottom: 0.5rem;">预览数据 (<span id="previewCount">0</span> 条)</h4>
+          <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>学号</th>
+                  <th>姓名</th>
+                  <th>班级</th>
+                  <th>密码</th>
+                </tr>
+              </thead>
+              <tbody id="importPreviewTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="importResult" style="display: none; margin-top: 1rem;"></div>
+        <div class="flex justify-between mt-3">
+          <button type="button" class="btn btn-secondary" onclick="closeImportModal()">取消</button>
+          <button type="button" class="btn btn-success" id="submitImportBtn" onclick="submitImport()" disabled>开始导入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加/编辑学生弹窗 -->
+  <div class="modal-overlay" id="studentModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="studentModalTitle">添加学生</h3>
+        <button class="modal-close" onclick="closeStudentModal()">&times;</button>
+      </div>
+      <form id="studentForm">
+        <input type="hidden" id="editStudentId">
+        <div class="form-group">
+          <label class="form-label">学号 *</label>
+          <input type="text" id="studentId" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">姓名 *</label>
+          <input type="text" id="studentName" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">班级</label>
+          <input type="text" id="studentClass" class="form-input">
+        </div>
+        <div class="form-group" id="passwordGroup">
+          <label class="form-label">密码（留空则默认为学号）</label>
+          <input type="password" id="studentPassword" class="form-input">
+        </div>
+        <div class="flex justify-between">
+          <button type="button" class="btn btn-secondary" onclick="closeStudentModal()">取消</button>
+          <button type="submit" class="btn btn-success">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    // 检查登录和权限
+    if (!isLoggedIn()) {
+      window.location.href = '/';
+    }
+    const user = getCurrentUser();
+    if (!user || user.role !== 'admin') {
+      window.location.href = '/dashboard.html';
+    }
+    document.getElementById('adminName').textContent = user.name;
+
+    // 退出登录
+    document.getElementById('logoutBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearToken();
+      window.location.href = '/';
+    });
+
+    // 标签切换
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+
+      document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+      document.getElementById(name + 'Panel').classList.remove('hidden');
+
+      // 加载对应数据
+      if (name === 'overview') loadOverview();
+      else if (name === 'time') loadTimeSettings();
+      else if (name === 'subjects') loadSubjects();
+      else if (name === 'students') loadStudents();
+      else if (name === 'stats') loadSelectionList();
+      else if (name === 'combinations') loadCombinations();
+    }
+
+    // 加载概览
+    async function loadOverview() {
+      const result = await api.selections.getStats();
+      if (result.code === 200) {
+        const { overview } = result.data;
+        document.getElementById('statTotal').textContent = overview.totalStudents;
+        document.getElementById('statSubmitted').textContent = overview.submittedCount;
+        document.getElementById('statPending').textContent = overview.pendingCount;
+        const rate = overview.totalStudents > 0
+          ? Math.round(overview.submittedCount / overview.totalStudents * 100)
+          : 0;
+        document.getElementById('statRate').textContent = rate + '%';
+      }
+    }
+
+    // 导出Excel
+    document.getElementById('exportBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      window.open(api.admin.exportUrl(), '_blank');
+    });
+
+    // 加载时间设置
+    async function loadTimeSettings() {
+      const result = await api.selections.getStatus();
+      if (result.code === 200) {
+        if (result.data.startTime) {
+          document.getElementById('startTime').value = result.data.startTime;
+        }
+        if (result.data.endTime) {
+          document.getElementById('endTime').value = result.data.endTime;
+        }
+      }
+    }
+
+    // 保存时间设置
+    document.getElementById('timeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+
+      const result = await api.admin.setSelectionTime(startTime, endTime);
+      if (result.code === 200) {
+        alert('时间设置已保存');
+      } else {
+        alert(result.message);
+      }
+    });
+
+    // 加载科目列表
+    async function loadSubjects() {
+      const result = await api.subjects.getAll();
+      const tbody = document.getElementById('subjectsTable');
+
+      if (result.code === 200) {
+        const categoryMap = {
+          'physics_history': '首选科目',
+          'four_electives': '再选科目'
+        };
+
+        tbody.innerHTML = result.data.map(s => `
+          <tr>
+            <td><strong>${s.name}</strong></td>
+            <td><span class="badge badge-info">${categoryMap[s.category]}</span></td>
+            <td>${s.description || '-'}</td>
+            <td>${s.maxCapacity || '不限'}</td>
+            <td>${s.currentCount || 0}</td>
+            <td>${s.isActive ? '<span class="badge badge-success">启用</span>' : '<span class="badge badge-danger">禁用</span>'}</td>
+            <td>
+              <button class="btn btn-sm btn-secondary" onclick="editSubject(${s.id})">编辑</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteSubject(${s.id})">删除</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 科目弹窗
+    let currentSubjects = [];
+
+    document.getElementById('addSubjectBtn').addEventListener('click', () => {
+      document.getElementById('modalTitle').textContent = '添加科目';
+      document.getElementById('subjectId').value = '';
+      document.getElementById('subjectForm').reset();
+      document.getElementById('subjectModal').classList.add('active');
+    });
+
+    function closeSubjectModal() {
+      document.getElementById('subjectModal').classList.remove('active');
+    }
+
+    async function editSubject(id) {
+      const result = await api.subjects.getById(id);
+      if (result.code === 200) {
+        const s = result.data;
+        document.getElementById('modalTitle').textContent = '编辑科目';
+        document.getElementById('subjectId').value = s.id;
+        document.getElementById('subjectName').value = s.name;
+        document.getElementById('subjectCategory').value = s.category;
+        document.getElementById('subjectDesc').value = s.description || '';
+        document.getElementById('subjectCapacity').value = s.maxCapacity || 0;
+        document.getElementById('subjectModal').classList.add('active');
+      }
+    }
+
+    async function deleteSubject(id) {
+      if (!confirm('确定删除此科目？')) return;
+      const result = await api.subjects.delete(id);
+      if (result.code === 200) {
+        loadSubjects();
+      } else {
+        alert(result.message);
+      }
+    }
+
+    document.getElementById('subjectForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('subjectId').value;
+      const data = {
+        name: document.getElementById('subjectName').value,
+        category: document.getElementById('subjectCategory').value,
+        description: document.getElementById('subjectDesc').value,
+        maxCapacity: parseInt(document.getElementById('subjectCapacity').value) || 0
+      };
+
+      let result;
+      if (id) {
+        result = await api.subjects.update(id, data);
+      } else {
+        result = await api.subjects.create(data);
+      }
+
+      if (result.code === 200) {
+        closeSubjectModal();
+        loadSubjects();
+      } else {
+        alert(result.message);
+      }
+    });
+
+    // 加载学生列表
+    let currentPage = 1;
+    let classesLoaded = false;
+
+    // 加载班级筛选选项
+    async function loadClassFilter() {
+      if (classesLoaded) return;
+      const result = await api.admin.getStudents({ page: 1, limit: 1000 });
+      if (result.code === 200) {
+        const classes = [...new Set(result.data.data.map(s => s.className).filter(c => c))];
+        classes.sort();
+        const select = document.getElementById('classFilter');
+        classes.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c;
+          option.textContent = c;
+          select.appendChild(option);
+        });
+        classesLoaded = true;
+      }
+    }
+
+    async function loadStudents(page = 1) {
+      currentPage = page;
+      await loadClassFilter(); // 首次加载时填充班级筛选
+      const classFilter = document.getElementById('classFilter').value;
+      const params = { page, limit: 15 };
+      if (classFilter) params.className = classFilter;
+      const result = await api.admin.getStudents(params);
+      const tbody = document.getElementById('studentsTable');
+
+      if (result.code === 200) {
+        const { data, total, limit } = result.data;
+
+        tbody.innerHTML = data.map(s => {
+          const sel = s.selection;
+          const hasSelection = sel && sel.status !== 'cancelled';
+          return `
+            <tr>
+              <td>${s.studentId}</td>
+              <td>${s.name}</td>
+              <td>${s.className || '-'}</td>
+              <td>${hasSelection ? '<span class="badge badge-success">已选</span>' : '<span class="badge badge-warning">未选</span>'}</td>
+              <td>
+                <div class="flex gap-1">
+                  <button class="btn btn-sm btn-primary" onclick="editStudent(${s.id})" title="编辑">🖊️</button>
+                  <button class="btn btn-sm btn-warning" onclick="resetPassword(${s.id}, '${s.studentId}')" title="重置密码">🔑</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteStudent(${s.id}, '${s.name}')" title="删除">🗑️</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // 分页
+        const totalPages = Math.ceil(total / limit);
+        document.getElementById('studentsPagination').innerHTML = `
+          <span>共 ${total} 条记录</span>
+          <div class="flex gap-1">
+            ${page > 1 ? `<button class="btn btn-sm btn-secondary" onclick="loadStudents(${page-1})">上一页</button>` : ''}
+            <span style="padding: 0.5rem;">第 ${page}/${totalPages} 页</span>
+            ${page < totalPages ? `<button class="btn btn-sm btn-secondary" onclick="loadStudents(${page+1})">下一页</button>` : ''}
+          </div>
+        `;
+      }
+    }
+
+    document.getElementById('classFilter').addEventListener('change', () => loadStudents(1));
+
+    // 学生管理功能
+    function openStudentModal(isEdit = false, student = null) {
+      const modal = document.getElementById('studentModal');
+      modal.classList.add('active');
+      document.getElementById('studentModalTitle').textContent = isEdit ? '编辑学生' : '添加学生';
+      document.getElementById('studentForm').reset();
+      document.getElementById('editStudentId').value = '';
+
+      if (isEdit && student) {
+        document.getElementById('editStudentId').value = student.id;
+        document.getElementById('studentId').value = student.studentId;
+        document.getElementById('studentName').value = student.name;
+        document.getElementById('studentClass').value = student.className || '';
+        document.getElementById('passwordGroup').style.display = 'none';
+      } else {
+        document.getElementById('passwordGroup').style.display = 'block';
+      }
+    }
+
+    function closeStudentModal() {
+      document.getElementById('studentModal').classList.remove('active');
+    }
+
+    document.getElementById('addStudentBtn').addEventListener('click', () => {
+      openStudentModal(false);
+    });
+
+    document.getElementById('studentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('editStudentId').value;
+      const studentId = document.getElementById('studentId').value;
+      const name = document.getElementById('studentName').value;
+      const className = document.getElementById('studentClass').value;
+      const password = document.getElementById('studentPassword').value;
+
+      try {
+        let result;
+        if (editId) {
+          // 编辑学生
+          result = await fetch(`/api/admin/students/${editId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + getToken()
+            },
+            body: JSON.stringify({ studentId, name, className })
+          }).then(r => r.json());
+        } else {
+          // 添加学生
+          result = await fetch('/api/admin/students', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + getToken()
+            },
+            body: JSON.stringify({ studentId, name, className, password })
+          }).then(r => r.json());
+        }
+
+        if (result.code === 200) {
+          alert(result.message || (editId ? '学生信息更新成功' : '学生添加成功'));
+          closeStudentModal();
+          loadStudents(currentPage);
+        } else {
+          alert(result.message || '操作失败');
+        }
+      } catch (err) {
+        console.error('保存学生错误:', err);
+        alert('操作失败');
+      }
+    });
+
+    async function editStudent(id) {
+      try {
+        const result = await api.admin.getStudents({ page: 1, limit: 1000 });
+        const student = result.data.data.find(s => s.id === id);
+        if (student) {
+          openStudentModal(true, student);
+        }
+      } catch (err) {
+        console.error('获取学生信息错误:', err);
+        alert('获取学生信息失败');
+      }
+    }
+
+    async function deleteStudent(id, name) {
+      if (!confirm(`确定要删除学生 "${name}" 吗？删除后该学生的选科记录也将被删除。`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/admin/students/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert('学生删除成功');
+          loadStudents(currentPage);
+        } else {
+          alert(result.message || '删除失败');
+        }
+      } catch (err) {
+        console.error('删除学生错误:', err);
+        alert('删除失败');
+      }
+    }
+
+    async function resetPassword(id, studentId) {
+      if (!confirm(`确定要重置该学生的密码吗？密码将重置为学号：${studentId}`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/admin/students/${id}/reset-password`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert(result.message || '密码重置成功');
+        } else {
+          alert(result.message || '重置失败');
+        }
+      } catch (err) {
+        console.error('重置密码错误:', err);
+        alert('重置失败');
+      }
+    }
+
+    // 加载选科列表
+    let currentSelectionsPage = 1;
+    let selectionsClassesLoaded = false;
+    let selectionsCombinationsLoaded = false;
+
+    // 加载班级筛选选项
+    async function loadSelectionsClassFilter() {
+      if (selectionsClassesLoaded) return;
+      const result = await api.admin.getStudents({ page: 1, limit: 1000 });
+      if (result.code === 200) {
+        const classes = [...new Set(result.data.data.map(s => s.className).filter(c => c))];
+        classes.sort();
+        const select = document.getElementById('selectionsClassFilter');
+        classes.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c;
+          option.textContent = c;
+          select.appendChild(option);
+        });
+        selectionsClassesLoaded = true;
+      }
+    }
+
+    // 加载组合筛选选项
+    async function loadSelectionsCombinationFilter() {
+      if (selectionsCombinationsLoaded) return;
+      try {
+        const response = await fetch('/api/selections/combinations', {
+          headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        const result = await response.json();
+        if (result.code === 200) {
+          const combinations = result.data.combinations.map(c => c.combination);
+          combinations.sort();
+          const select = document.getElementById('selectionsCombinationFilter');
+          combinations.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c;
+            option.textContent = c;
+            select.appendChild(option);
+          });
+          selectionsCombinationsLoaded = true;
+        }
+      } catch (err) {
+        console.error('加载组合选项失败:', err);
+      }
+    }
+
+    async function loadSelectionList(page = 1) {
+      currentSelectionsPage = page;
+      await loadSelectionsClassFilter();
+      await loadSelectionsCombinationFilter();
+
+      const classFilter = document.getElementById('selectionsClassFilter').value;
+      const combinationFilter = document.getElementById('selectionsCombinationFilter').value;
+      const params = { page, limit: 15 };
+      if (classFilter) params.className = classFilter;
+
+      const result = await api.selections.getAll(params);
+      const tbody = document.getElementById('selectionsTable');
+
+      if (result.code === 200) {
+        let { data, total, limit } = result.data;
+
+        // 客户端组合筛选（因为后端不支持组合筛选）
+        if (combinationFilter) {
+          data = data.filter(sel => {
+            const ph = sel.physicsHistorySubject?.name || '';
+            const electives = [
+              sel.electiveOneSubject?.name || '',
+              sel.electiveTwoSubject?.name || ''
+            ].sort();
+            const combination = `${ph} + ${electives.join(' + ')}`;
+            return combination === combinationFilter;
+          });
+          total = data.length; // 更新总数
+        }
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无数据</td></tr>';
+        } else {
+          tbody.innerHTML = data.map(sel => {
+            const statusMap = {
+              'submitted': '<span class="badge badge-primary">已提交</span>',
+              'confirmed': '<span class="badge badge-success">已确认</span>',
+              'cancelled': '<span class="badge badge-secondary">已取消</span>'
+            };
+            const submittedAt = sel.submittedAt ? new Date(sel.submittedAt).toLocaleString('zh-CN', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit'
+            }) : '-';
+
+            // 构建选科组合
+            const ph = sel.physicsHistorySubject?.name || '-';
+            const elec1 = sel.electiveOneSubject?.name || '-';
+            const elec2 = sel.electiveTwoSubject?.name || '-';
+            const combination = (ph === '-' && elec1 === '-' && elec2 === '-')
+              ? '-'
+              : `${ph} + ${elec1} + ${elec2}`;
+
+            return `
+              <tr>
+                <td>${sel.user?.studentId || '-'}</td>
+                <td>${sel.user?.name || '-'}</td>
+                <td>${sel.user?.className || '-'}</td>
+                <td>${combination}</td>
+                <td>${statusMap[sel.status] || '-'}</td>
+                <td style="font-family: monospace; font-size: 0.85rem;">${submittedAt}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // 分页
+        const totalPages = Math.ceil(total / limit);
+        document.getElementById('selectionsPagination').innerHTML = `
+          <span>共 ${total} 条记录</span>
+          <div class="flex gap-1">
+            ${page > 1 ? `<button class="btn btn-sm btn-secondary" onclick="loadSelectionList(${page-1})">上一页</button>` : ''}
+            <span style="padding: 0.5rem;">第 ${page}/${totalPages || 1} 页</span>
+            ${page < totalPages ? `<button class="btn btn-sm btn-secondary" onclick="loadSelectionList(${page+1})">下一页</button>` : ''}
+          </div>
+        `;
+      }
+    }
+
+    // 筛选器变化时重新加载
+    document.getElementById('selectionsClassFilter').addEventListener('change', () => loadSelectionList(1));
+    document.getElementById('selectionsCombinationFilter').addEventListener('change', () => loadSelectionList(1));
+
+    // 导出选科列表
+    document.getElementById('exportSelectionsBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      const classFilter = document.getElementById('selectionsClassFilter').value;
+      let url = '/api/selections/export?token=' + getToken();
+      if (classFilter) url += '&className=' + encodeURIComponent(classFilter);
+      window.open(url, '_blank');
+    });
+
+    // 加载组合统计
+    async function loadCombinations() {
+      const container = document.getElementById('combinationStats');
+
+      try {
+        const response = await fetch('/api/selections/combinations', {
+          headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          const { total, physicsCount, historyCount, combinationCount, combinations } = result.data;
+
+          // 更新统计卡片
+          document.getElementById('comboTotal').textContent = total;
+          document.getElementById('comboPhysics').textContent = physicsCount;
+          document.getElementById('comboHistory').textContent = historyCount;
+          document.getElementById('comboCount').textContent = combinationCount;
+
+          // 生成组合列表
+          if (combinations.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">暂无选科数据</p>';
+            return;
+          }
+
+          const maxCount = Math.max(...combinations.map(c => c.count));
+
+          container.innerHTML = `
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 50px;">排名</th>
+                    <th>选科组合</th>
+                    <th style="width: 100px;">方向</th>
+                    <th style="width: 100px;">人数</th>
+                    <th style="width: 200px;">占比</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${combinations.map((c, i) => {
+                    const percent = total > 0 ? (c.count / total * 100).toFixed(1) : 0;
+                    const barWidth = maxCount > 0 ? (c.count / maxCount * 100) : 0;
+                    const isPhysics = c.physicsHistory === '物理';
+                    return `
+                      <tr>
+                        <td style="text-align: center; font-weight: 600;">${i + 1}</td>
+                        <td>
+                          <strong style="font-size: 1.1rem;">${c.combination}</strong>
+                        </td>
+                        <td>
+                          <span class="badge ${isPhysics ? 'badge-info' : 'badge-warning'}">
+                            ${isPhysics ? '物理' : '历史'}方向
+                          </span>
+                        </td>
+                        <td style="text-align: center;">
+                          <strong style="font-size: 1.2rem;">${c.count}</strong>
+                          <span style="color: var(--text-muted);"> 人</span>
+                        </td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <div class="progress" style="flex: 1; height: 12px;">
+                              <div class="progress-bar" style="width: ${barWidth}%; background: ${isPhysics ? 'linear-gradient(90deg, #3b82f6, #60a5fa)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)'};"></div>
+                            </div>
+                            <span style="min-width: 50px; text-align: right;">${percent}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-4" style="display: flex; gap: 2rem; justify-content: center;">
+              <div style="text-align: center;">
+                <div style="width: 20px; height: 20px; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></div>
+                <span>物理方向: ${physicsCount} 人 (${total > 0 ? (physicsCount / total * 100).toFixed(1) : 0}%)</span>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 20px; height: 20px; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></div>
+                <span>历史方向: ${historyCount} 人 (${total > 0 ? (historyCount / total * 100).toFixed(1) : 0}%)</span>
+              </div>
+            </div>
+          `;
+        } else {
+          container.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 2rem;">加载失败: ' + result.message + '</p>';
+        }
+      } catch (err) {
+        console.error('加载组合统计错误:', err);
+        container.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 2rem;">加载失败</p>';
+      }
+    }
+
+    // 导出组合统计
+    document.getElementById('exportCombinationsBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      window.open('/api/selections/combinations/export?token=' + getToken(), '_blank');
+    });
+
+    // ============ 学生导入功能 ============
+    let importData = [];
+
+    // 打开导入弹窗
+    document.getElementById('importStudentsBtn').addEventListener('click', () => {
+      document.getElementById('importModal').classList.add('active');
+      resetImportModal();
+    });
+
+    function closeImportModal() {
+      document.getElementById('importModal').classList.remove('active');
+      resetImportModal();
+    }
+
+    function resetImportModal() {
+      document.getElementById('importFile').value = '';
+      document.getElementById('importPreview').style.display = 'none';
+      document.getElementById('importPreviewTable').innerHTML = '';
+      document.getElementById('importResult').style.display = 'none';
+      document.getElementById('importResult').innerHTML = '';
+      document.getElementById('submitImportBtn').disabled = true;
+      importData = [];
+    }
+
+    // 处理文件选择
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+
+          // 映射列名
+          importData = jsonData.map(row => ({
+            studentId: String(row['学号'] || row['studentId'] || '').trim(),
+            name: String(row['姓名'] || row['name'] || '').trim(),
+            className: String(row['班级'] || row['className'] || '').trim(),
+            password: String(row['密码'] || row['password'] || '123456').trim()
+          })).filter(s => s.studentId && s.name);
+
+          if (importData.length === 0) {
+            alert('未找到有效数据，请检查Excel文件格式');
+            return;
+          }
+
+          // 显示预览
+          document.getElementById('previewCount').textContent = importData.length;
+          const previewRows = importData.slice(0, 50); // 最多显示50条
+          document.getElementById('importPreviewTable').innerHTML = previewRows.map(s => `
+            <tr>
+              <td>${s.studentId}</td>
+              <td>${s.name}</td>
+              <td>${s.className || '-'}</td>
+              <td>${s.password === '123456' ? '(默认)' : '******'}</td>
+            </tr>
+          `).join('') + (importData.length > 50 ? '<tr><td colspan="4" class="text-center">... 还有 ' + (importData.length - 50) + ' 条数据</td></tr>' : '');
+
+          document.getElementById('importPreview').style.display = 'block';
+          document.getElementById('submitImportBtn').disabled = false;
+        } catch (err) {
+          console.error('解析Excel错误:', err);
+          alert('解析Excel文件失败: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 下载模板
+    function downloadTemplate() {
+      const templateData = [
+        { '学号': '2024001', '姓名': '张三', '班级': '高一1班', '密码': '123456' },
+        { '学号': '2024002', '姓名': '李四', '班级': '高一1班', '密码': '' },
+        { '学号': '2024003', '姓名': '王五', '班级': '高一2班', '密码': '' }
+      ];
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '学生名单');
+      XLSX.writeFile(wb, '学生导入模板.xlsx');
+    }
+
+    // 提交导入
+    async function submitImport() {
+      if (importData.length === 0) {
+        alert('请先选择要导入的文件');
+        return;
+      }
+
+      const btn = document.getElementById('submitImportBtn');
+      btn.disabled = true;
+      btn.textContent = '导入中...';
+
+      try {
+        const result = await api.admin.importStudents(importData);
+        const resultDiv = document.getElementById('importResult');
+
+        if (result.code === 200) {
+          const { success, failed, errors } = result.data;
+          let html = `<div class="alert" style="background: var(--success); color: white; padding: 1rem; border-radius: 8px;">
+            <strong>✅ 导入完成</strong><br>
+            成功: ${success} 人，失败: ${failed} 人
+          </div>`;
+
+          if (errors && errors.length > 0) {
+            html += `<div style="margin-top: 0.5rem; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--danger);">
+              ${errors.slice(0, 10).map(e => `<div>• ${e}</div>`).join('')}
+              ${errors.length > 10 ? `<div>... 还有 ${errors.length - 10} 条错误</div>` : ''}
+            </div>`;
+          }
+
+          resultDiv.innerHTML = html;
+          resultDiv.style.display = 'block';
+
+          // 刷新学生列表
+          loadStudents(1);
+
+          // 延迟关闭弹窗
+          setTimeout(() => {
+            closeImportModal();
+          }, 2000);
+        } else {
+          resultDiv.innerHTML = `<div class="alert" style="background: var(--danger); color: white; padding: 1rem; border-radius: 8px;">
+            <strong>❌ 导入失败</strong><br>${result.message}
+          </div>`;
+          resultDiv.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = '开始导入';
+        }
+      } catch (err) {
+        console.error('导入错误:', err);
+        alert('导入失败: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '开始导入';
+      }
+    }
+
+    // 初始化
+    loadOverview();
+  </script>
+</body>
+</html>

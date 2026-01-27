@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>选科 - 分科自选系统</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <!-- 导航栏 -->
+    <nav class="navbar">
+      <div class="container navbar-content">
+        <a href="/dashboard.html" class="navbar-brand">
+          📚 <span>分科自选系统</span>
+        </a>
+        <div class="navbar-nav">
+          <a href="/dashboard.html" class="nav-link">首页</a>
+          <a href="/selection.html" class="nav-link active">选科</a>
+          <div class="nav-user">
+            <div class="nav-user-avatar" id="userAvatar">U</div>
+            <span id="userName">用户</span>
+            <a href="#" id="logoutBtn" style="color: var(--text-muted); margin-left: 0.5rem;">退出</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <div class="container">
+        <!-- 状态提示 -->
+        <div id="statusAlert" class="alert alert-info mb-4">
+          <span>⏳ 正在加载...</span>
+        </div>
+
+        <!-- 已选科目摘要 -->
+        <div class="selection-summary mb-4" id="selectionSummary">
+          <div class="selection-summary-title">📋 当前选择</div>
+          <div class="selection-items">
+            <div class="selection-item">
+              <span class="selection-item-label">首选:</span>
+              <span class="selection-item-value" id="selectedPH">未选</span>
+            </div>
+            <div class="selection-item">
+              <span class="selection-item-label">再选1:</span>
+              <span class="selection-item-value" id="selectedE1">未选</span>
+            </div>
+            <div class="selection-item">
+              <span class="selection-item-label">再选2:</span>
+              <span class="selection-item-value" id="selectedE2">未选</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 首选科目 - 物理/历史 -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3 class="card-title">1️⃣ 首选科目（二选一）</h3>
+            <span class="badge badge-info">必选</span>
+          </div>
+          <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            物理或历史，决定你的大学专业方向
+          </p>
+          <div class="subject-grid" id="physicsHistoryGrid">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- 再选科目 - 四选二 -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3 class="card-title">2️⃣ 再选科目（四选二）</h3>
+            <span class="badge badge-info">选2门</span>
+          </div>
+          <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            从化学、生物、政治、地理中选择两门
+          </p>
+          <div class="subject-grid" id="electivesGrid">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <div class="flex justify-between items-center" style="margin-top: 2rem;">
+          <a href="/dashboard.html" class="btn btn-secondary">返回首页</a>
+          <div class="flex gap-2">
+            <button class="btn btn-outline" id="cancelBtn" style="display: none;">取消选科</button>
+            <button class="btn btn-success btn-lg" id="submitBtn" disabled>
+              提交选科
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    // 检查登录状态
+    if (!isLoggedIn()) {
+      window.location.href = '/';
+    }
+
+    const user = getCurrentUser();
+    if (user) {
+      document.getElementById('userAvatar').textContent = user.name.charAt(0);
+      document.getElementById('userName').textContent = user.name;
+    }
+
+    // 退出登录
+    document.getElementById('logoutBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearToken();
+      window.location.href = '/';
+    });
+
+    // 选科状态
+    let subjects = [];
+    let selectedPhysicsHistory = null;
+    let selectedElectives = [];
+    let selectionOpen = false;
+    let hasExistingSelection = false;
+
+    // 加载选科状态
+    async function loadStatus() {
+      const statusAlert = document.getElementById('statusAlert');
+      const result = await api.selections.getStatus();
+
+      if (result.code === 200) {
+        const { open, message, startTime, endTime } = result.data;
+        selectionOpen = open;
+
+        if (open) {
+          statusAlert.className = 'alert alert-success mb-4';
+          statusAlert.innerHTML = `<span>✅ ${message} | 截止时间: ${endTime}</span>`;
+        } else {
+          statusAlert.className = 'alert alert-warning mb-4';
+          statusAlert.innerHTML = `<span>⏰ ${message}</span>`;
+        }
+      }
+    }
+
+    // 加载科目
+    async function loadSubjects() {
+      const result = await api.subjects.getAll({ active: true });
+
+      if (result.code === 200) {
+        subjects = result.data;
+        renderSubjects();
+      }
+    }
+
+    // 加载已有选科
+    async function loadMySelection() {
+      const result = await api.selections.getMy();
+
+      if (result.code === 200 && result.data && result.data.status !== 'cancelled') {
+        hasExistingSelection = true;
+        selectedPhysicsHistory = result.data.physicsOrHistory;
+        selectedElectives = [result.data.electiveOne, result.data.electiveTwo].filter(Boolean);
+
+        document.getElementById('cancelBtn').style.display = 'block';
+        document.getElementById('submitBtn').textContent = '修改选科';
+
+        updateSummary();
+        renderSubjects();
+        checkSubmitReady();
+      }
+    }
+
+    // 渲染科目卡片
+    function renderSubjects() {
+      const phGrid = document.getElementById('physicsHistoryGrid');
+      const elGrid = document.getElementById('electivesGrid');
+
+      const phSubjects = subjects.filter(s => s.category === 'physics_history');
+      const elSubjects = subjects.filter(s => s.category === 'four_electives');
+
+      phGrid.innerHTML = phSubjects.map(s => createSubjectCard(s, 'ph')).join('');
+      elGrid.innerHTML = elSubjects.map(s => createSubjectCard(s, 'el')).join('');
+
+      // 绑定点击事件
+      document.querySelectorAll('.subject-card').forEach(card => {
+        card.addEventListener('click', () => handleSubjectClick(card));
+      });
+    }
+
+    function createSubjectCard(subject, type) {
+      const isSelected = type === 'ph'
+        ? selectedPhysicsHistory === subject.id
+        : selectedElectives.includes(subject.id);
+
+      const isFull = subject.maxCapacity > 0 && subject.currentCount >= subject.maxCapacity;
+      const remaining = subject.maxCapacity > 0
+        ? subject.maxCapacity - subject.currentCount
+        : '不限';
+
+      return `
+        <div class="subject-card ${isSelected ? 'selected' : ''} ${isFull && !isSelected ? 'disabled' : ''}"
+             data-id="${subject.id}" data-type="${type}" data-name="${subject.name}">
+          <div class="subject-name">${subject.name}</div>
+          <div class="subject-desc">${subject.description || ''}</div>
+          <div class="subject-meta">
+            <span class="subject-capacity">剩余名额: ${remaining}</span>
+            ${isSelected ? '<span class="badge badge-success">已选</span>' : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // 点击科目
+    function handleSubjectClick(card) {
+      if (!selectionOpen) {
+        alert('选科未开放');
+        return;
+      }
+
+      if (card.classList.contains('disabled')) {
+        alert('该科目名额已满');
+        return;
+      }
+
+      const id = parseInt(card.dataset.id);
+      const type = card.dataset.type;
+      const name = card.dataset.name;
+
+      if (type === 'ph') {
+        // 首选科目 - 单选
+        if (selectedPhysicsHistory === id) {
+          selectedPhysicsHistory = null;
+        } else {
+          selectedPhysicsHistory = id;
+        }
+      } else {
+        // 再选科目 - 最多选2
+        const index = selectedElectives.indexOf(id);
+        if (index > -1) {
+          selectedElectives.splice(index, 1);
+        } else {
+          if (selectedElectives.length >= 2) {
+            alert('再选科目最多选择2门');
+            return;
+          }
+          selectedElectives.push(id);
+        }
+      }
+
+      renderSubjects();
+      updateSummary();
+      checkSubmitReady();
+    }
+
+    // 更新摘要
+    function updateSummary() {
+      const phSubject = subjects.find(s => s.id === selectedPhysicsHistory);
+      const el1Subject = subjects.find(s => s.id === selectedElectives[0]);
+      const el2Subject = subjects.find(s => s.id === selectedElectives[1]);
+
+      document.getElementById('selectedPH').textContent = phSubject?.name || '未选';
+      document.getElementById('selectedE1').textContent = el1Subject?.name || '未选';
+      document.getElementById('selectedE2').textContent = el2Subject?.name || '未选';
+    }
+
+    // 检查是否可以提交
+    function checkSubmitReady() {
+      const ready = selectedPhysicsHistory && selectedElectives.length === 2 && selectionOpen;
+      document.getElementById('submitBtn').disabled = !ready;
+    }
+
+    // 提交选科
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      if (!selectedPhysicsHistory || selectedElectives.length !== 2) {
+        alert('请完成所有选科');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+
+      const result = await api.selections.submit({
+        physicsOrHistory: selectedPhysicsHistory,
+        electiveOne: selectedElectives[0],
+        electiveTwo: selectedElectives[1]
+      });
+
+      if (result.code === 200) {
+        alert('选科提交成功！');
+        window.location.href = '/dashboard.html';
+      } else {
+        alert(result.message);
+        btn.disabled = false;
+        btn.textContent = hasExistingSelection ? '修改选科' : '提交选科';
+      }
+    });
+
+    // 取消选科
+    document.getElementById('cancelBtn').addEventListener('click', async () => {
+      if (!confirm('确定要取消选科吗？')) return;
+
+      const result = await api.selections.cancel();
+      if (result.code === 200) {
+        alert('选科已取消');
+        window.location.href = '/dashboard.html';
+      } else {
+        alert(result.message);
+      }
+    });
+
+    // 初始化
+    loadStatus().then(() => {
+      loadSubjects();
+      loadMySelection();
+    });
+  </script>
+</body>
+</html>

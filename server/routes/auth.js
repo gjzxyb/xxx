@@ -1,0 +1,120 @@
+const express = require('express');
+const router = express.Router();
+const { User } = require('../models');
+const { success, error } = require('../utils/response');
+const { authenticate, generateToken } = require('../middleware/auth');
+
+/**
+ * 用户登录
+ * POST /api/auth/login
+ */
+router.post('/login', async (req, res) => {
+  try {
+    const { studentId, password } = req.body;
+
+    if (!studentId || !password) {
+      return error(res, '请输入学号和密码');
+    }
+
+    const user = await User.findOne({ where: { studentId } });
+    if (!user) {
+      return error(res, '学号或密码错误');
+    }
+
+    const isValid = await user.validatePassword(password);
+    if (!isValid) {
+      return error(res, '学号或密码错误');
+    }
+
+    const token = generateToken(user);
+
+    success(res, {
+      token,
+      user: user.toSafeObject()
+    }, '登录成功');
+  } catch (err) {
+    console.error('登录错误:', err);
+    error(res, '登录失败，请稍后重试', 500);
+  }
+});
+
+/**
+ * 用户注册
+ * POST /api/auth/register
+ */
+router.post('/register', async (req, res) => {
+  try {
+    const { studentId, name, password, className, phone } = req.body;
+
+    if (!studentId || !name || !password) {
+      return error(res, '请填写必要信息（学号、姓名、密码）');
+    }
+
+    // 检查学号是否已存在
+    const existing = await User.findOne({ where: { studentId } });
+    if (existing) {
+      return error(res, '该学号已被注册');
+    }
+
+    const user = await User.create({
+      studentId,
+      name,
+      password,
+      className,
+      phone,
+      role: 'student'
+    });
+
+    const token = generateToken(user);
+
+    success(res, {
+      token,
+      user: user.toSafeObject()
+    }, '注册成功');
+  } catch (err) {
+    console.error('注册错误:', err);
+    error(res, '注册失败，请稍后重试', 500);
+  }
+});
+
+/**
+ * 获取当前用户信息
+ * GET /api/auth/profile
+ */
+router.get('/profile', authenticate, async (req, res) => {
+  try {
+    success(res, req.user.toSafeObject());
+  } catch (err) {
+    console.error('获取用户信息错误:', err);
+    error(res, '获取用户信息失败', 500);
+  }
+});
+
+/**
+ * 修改密码
+ * PUT /api/auth/password
+ */
+router.put('/password', authenticate, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return error(res, '请输入原密码和新密码');
+    }
+
+    const isValid = await req.user.validatePassword(oldPassword);
+    if (!isValid) {
+      return error(res, '原密码错误');
+    }
+
+    req.user.password = newPassword;
+    await req.user.save();
+
+    success(res, null, '密码修改成功');
+  } catch (err) {
+    console.error('修改密码错误:', err);
+    error(res, '修改密码失败', 500);
+  }
+});
+
+module.exports = router;

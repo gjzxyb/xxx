@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生分科自选系统 - 登录</title>
+  <meta name="description" content="新高考3+1+2选科系统，学生自主选科平台">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="card login-card animate-fadeIn">
+      <div class="login-header">
+        <div class="login-logo">📚</div>
+        <h1 class="login-title">分科自选系统</h1>
+        <p class="login-subtitle">新高考 3+1+2 选科平台</p>
+      </div>
+
+      <div id="alertBox" class="alert hidden"></div>
+
+      <!-- 登录表单 -->
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label">学号 / 账号</label>
+          <input type="text" id="studentId" class="form-input" placeholder="请输入学号" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input type="password" id="password" class="form-input" placeholder="请输入密码" required>
+        </div>
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="rememberMe">
+            <span style="color: var(--text-secondary); font-size: 0.9rem;">记住登录状态</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">
+          登 录
+        </button>
+      </form>
+
+      <div class="mt-3 text-center">
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          还没有账号？<a href="#" id="showRegister">立即注册</a>
+        </p>
+      </div>
+
+      <!-- 注册表单 -->
+      <form id="registerForm" class="hidden">
+        <div class="form-group">
+          <label class="form-label">学号</label>
+          <input type="text" id="regStudentId" class="form-input" placeholder="请输入学号" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">姓名</label>
+          <input type="text" id="regName" class="form-input" placeholder="请输入真实姓名" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">班级</label>
+          <input type="text" id="regClassName" class="form-input" placeholder="如：高一(1)班">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input type="password" id="regPassword" class="form-input" placeholder="请设置密码" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认密码</label>
+          <input type="password" id="regConfirmPassword" class="form-input" placeholder="请再次输入密码" required>
+        </div>
+        <button type="submit" class="btn btn-success btn-lg" style="width: 100%;">
+          注 册
+        </button>
+        <div class="mt-3 text-center">
+          <a href="#" id="showLogin">返回登录</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    // 检查是否已登录
+    if (isLoggedIn()) {
+      const user = getCurrentUser();
+      if (user && user.role === 'admin') {
+        window.location.href = '/admin.html';
+      } else {
+        window.location.href = '/dashboard.html';
+      }
+    }
+
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const alertBox = document.getElementById('alertBox');
+
+    // 显示提示
+    function showAlert(message, type = 'danger') {
+      alertBox.textContent = message;
+      alertBox.className = `alert alert-${type}`;
+      alertBox.classList.remove('hidden');
+      setTimeout(() => alertBox.classList.add('hidden'), 5000);
+    }
+
+    // 切换表单
+    document.getElementById('showRegister').addEventListener('click', (e) => {
+      e.preventDefault();
+      loginForm.classList.add('hidden');
+      registerForm.classList.remove('hidden');
+    });
+
+    document.getElementById('showLogin').addEventListener('click', (e) => {
+      e.preventDefault();
+      registerForm.classList.add('hidden');
+      loginForm.classList.remove('hidden');
+    });
+
+    // 登录
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentId = document.getElementById('studentId').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!studentId || !password) {
+        showAlert('请输入学号和密码');
+        return;
+      }
+
+      const btn = loginForm.querySelector('button');
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+
+      const result = await api.auth.login(studentId, password);
+
+      if (result.code === 200) {
+        setToken(result.data.token);
+        setCurrentUser(result.data.user);
+
+        if (result.data.user.role === 'admin') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/dashboard.html';
+        }
+      } else {
+        showAlert(result.message);
+        btn.disabled = false;
+        btn.textContent = '登 录';
+      }
+    });
+
+    // 注册
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentId = document.getElementById('regStudentId').value.trim();
+      const name = document.getElementById('regName').value.trim();
+      const className = document.getElementById('regClassName').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+      if (!studentId || !name || !password) {
+        showAlert('请填写必要信息');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showAlert('两次密码输入不一致');
+        return;
+      }
+
+      const btn = registerForm.querySelector('button');
+      btn.disabled = true;
+      btn.textContent = '注册中...';
+
+      const result = await api.auth.register({ studentId, name, className, password });
+
+      if (result.code === 200) {
+        setToken(result.data.token);
+        setCurrentUser(result.data.user);
+        window.location.href = '/dashboard.html';
+      } else {
+        showAlert(result.message);
+        btn.disabled = false;
+        btn.textContent = '注 册';
+      }
+    });
+  </script>
+</body>
+</html>
