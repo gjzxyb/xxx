@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的项目 - 分科自选 SaaS 平台</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+  <div class="dashboard-layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🎓</div>
+        <span>SaaS 平台</span>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-item active">
+          <span>📊</span> 我的项目
+        </li>
+        <li class="nav-item" onclick="showCreateProjectModal()">
+          <span>➕</span> 创建项目
+        </li>
+        <li class="nav-item">
+          <span>⚙️</span> 账号设置
+        </li>
+      </ul>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div style="flex: 1; overflow: hidden;">
+          <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="userName">User</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Pro Plan</div>
+        </div>
+        <button class="btn-icon" onclick="logout()" title="退出" style="background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+          ⏻
+        </button>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <header class="header">
+        <div class="page-title">
+          <h1>我的项目</h1>
+          <p>管理您的分科自选系统实例</p>
+        </div>
+        <button class="btn btn-primary" onclick="showCreateProjectModal()">
+          <span>+</span> 创建新项目
+        </button>
+      </header>
+
+      <!-- 统计卡片 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="projectCount">0</div>
+          <div class="stat-label">已创建项目</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="maxProjects">0</div>
+          <div class="stat-label">项目配额</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="collaboratedProjects">0</div>
+          <div class="stat-label">协作项目</div>
+        </div>
+      </div>
+
+      <!-- 项目列表 -->
+      <div class="section-header">
+        <h2 style="font-size: 1.25rem;">全部项目</h2>
+        <div class="filter-tabs" style="display: flex; gap: 1rem;">
+          <!-- Placeholder for filters if needed -->
+        </div>
+      </div>
+
+      <div class="projects-grid" id="projectList">
+        <!-- Projects will be loaded here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- 创建项目弹窗 -->
+  <div class="modal-overlay" id="createProjectModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">✨ 创建新项目</h3>
+        <button class="modal-close" onclick="closeCreateProjectModal()">&times;</button>
+      </div>
+      <form id="createProjectForm">
+        <div class="form-group">
+          <label class="form-label">项目名称</label>
+          <input type="text" id="projectName" class="form-input" required placeholder="例如：XX中学分科系统">
+        </div>
+        <div class="form-group">
+          <label class="form-label">项目描述</label>
+          <textarea id="projectDesc" class="form-input" rows="3" placeholder="简要描述该项目的用途..."></textarea>
+        </div>
+        <div class="flex justify-between" style="margin-top: 2rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeCreateProjectModal()">取消</button>
+          <button type="submit" class="btn btn-primary">立即创建</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('platform_token');
+    const user = JSON.parse(localStorage.getItem('platform_user') || '{}');
+
+    if (!token) window.location.href = 'login.html';
+
+    document.getElementById('userName').textContent = user.name;
+    document.getElementById('userAvatar').textContent = user.name.charAt(0).toUpperCase();
+
+    // 加载项目列表
+    async function loadProjects() {
+      try {
+        const response = await fetch('/api/projects', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          const { owned, collaborated } = result.data;
+
+          document.getElementById('projectCount').textContent = owned.length;
+          document.getElementById('maxProjects').textContent = user.maxProjects;
+          document.getElementById('collaboratedProjects').textContent = collaborated.length;
+
+          const allProjects = [...owned.map(p => ({...p, type: 'owned'})), ...collaborated.map(p => ({...p, type: 'collab'}))];
+
+          if (allProjects.length === 0) {
+            document.getElementById('projectList').innerHTML = `
+              <div class="empty-state" style="grid-column: 1/-1;">
+                <div class="empty-icon">🚀</div>
+                <h3>开始您的第一个项目</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">您还没有创建任何分科系统项目。</p>
+                <button class="btn btn-primary" onclick="showCreateProjectModal()">创建项目</button>
+              </div>
+            `;
+            return;
+          }
+
+          document.getElementById('projectList').innerHTML = allProjects.map(p => `
+            <div class="project-card">
+              <div class="project-header">
+                <div class="project-icon">🏫</div>
+                <div class="project-status status-${p.status || 'stopped'}">
+                  <div class="status-dot"></div>
+                  ${getStatusText(p.status)}
+                </div>
+              </div>
+
+              <div class="project-name">${p.name}
+                ${p.type === 'collab' ? `<span class="badge badge-info" style="font-size: 0.7rem; margin-left: 0.5rem;">${getRoleName(p.role)}</span>` : ''}
+              </div>
+              <div class="project-desc">${p.description || '暂无描述'}</div>
+
+              <div class="project-meta">
+                <span>Created ${new Date(p.createdAt).toLocaleDateString()}</span>
+                ${p.port ? `<span style="font-family: monospace;">:${p.port}</span>` : ''}
+              </div>
+
+              <div class="project-actions">
+                ${getProjectActions(p)}
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('加载项目列表失败:', error);
+      }
+    }
+
+    function getRoleName(role) {
+      return { owner: '所有者', admin: '管理员', collaborator: '协作者' }[role] || role;
+    }
+
+    function getStatusText(status) {
+      const map = {
+        running: '运行中',
+        stopped: '已停止',
+        starting: '启动中',
+        error: '错误'
+      };
+      return map[status] || '未知';
+    }
+
+    function getProjectActions(p) {
+      if (p.status === 'running' && p.port) {
+        return `
+          <button class="action-btn btn-access" onclick="window.open('http://localhost:${p.port}', '_blank')">进入系统</button>
+          <button class="action-btn btn-stop" onclick="stopProject('${p.id}')">停止</button>
+        `;
+      } else if (p.status === 'starting') {
+        return '<button class="action-btn btn-stop" disabled>启动中...</button>';
+      } else {
+        return `
+          <button class="action-btn btn-start" onclick="startProject('${p.id}')">启动</button>
+          <button class="action-btn btn-stop" onclick="deleteProject('${p.id}', '${p.name}')">删除</button>
+        `;
+      }
+    }
+
+    async function startProject(id) {
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.textContent = '启动中...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/projects/${id}/start`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+          // 乐观更新
+          loadProjects();
+        } else {
+          alert(result.message || '启动失败');
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      } catch (err) {
+        alert('启动失败');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    async function stopProject(id) {
+      if (!confirm('确定要停止该项目吗？')) return;
+      try {
+        const res = await fetch(`/api/projects/${id}/stop`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+          loadProjects();
+        } else {
+          alert(result.message);
+        }
+      } catch (err) {
+        alert('停止失败');
+      }
+    }
+
+    function showCreateProjectModal() {
+      if (parseInt(document.getElementById('projectCount').textContent) >= user.maxProjects) {
+        alert(`已达到项目数量上限（${user.maxProjects}个）`);
+        return;
+      }
+      document.getElementById('createProjectModal').classList.add('active');
+    }
+
+    function closeCreateProjectModal() {
+      document.getElementById('createProjectModal').classList.remove('active');
+    }
+
+    document.getElementById('createProjectForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            name: document.getElementById('projectName').value,
+            description: document.getElementById('projectDesc').value
+          })
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+          closeCreateProjectModal();
+          loadProjects();
+        } else {
+          alert(result.message);
+        }
+      } catch (err) {
+        alert('创建失败');
+      }
+    });
+
+    async function deleteProject(id, name) {
+      if (!confirm(`确定要删除项目"${name}"吗？此操作不可恢复！`)) return;
+      try {
+        const res = await fetch(`/api/projects/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+          loadProjects();
+        } else {
+          alert(result.message);
+        }
+      } catch (err) {
+        alert('删除失败');
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    // Auto refresh status every 30 seconds
+    setInterval(loadProjects, 30000);
+    loadProjects();
+  </script>
+</body>
+</html>

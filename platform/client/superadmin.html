@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>超级管理员 - 分科自选 SaaS 平台</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-wrapper">
+    <nav class="navbar">
+      <div class="container navbar-content">
+        <div class="navbar-brand">
+          <span>🎓</span>
+          <span>分科自选平台 - 超级管理员</span>
+        </div>
+        <div class="navbar-nav">
+          <div class="nav-user">
+            <span id="userName"></span>
+            <button class="btn btn-sm btn-secondary" onclick="logout()">退出登录</button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <div class="container">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="totalUsers">-</div>
+            <div class="stat-label">总用户数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="totalProjects">-</div>
+            <div class="stat-label">总项目数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="recentUsers">-</div>
+            <div class="stat-label">新增用户(7天)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="recentProjects">-</div>
+            <div class="stat-label">新增项目(7天)</div>
+          </div>
+        </div>
+
+        <!-- 用户管理 -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">用户管理</h3>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>邮箱</th>
+                  <th>姓名</th>
+                  <th>项目数</th>
+                  <th>项目限额</th>
+                  <th>注册时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="usersTable">
+                <tr><td colspan="7" class="text-center">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 平台配置 -->
+        <div class="card" style="margin-top: 2rem;">
+          <div class="card-header">
+            <h3 class="card-title">平台配置</h3>
+          </div>
+          <form id="configForm">
+            <div class="form-group">
+              <label class="form-label">新用户默认项目限额</label>
+              <input type="number" id="defaultMaxProjects" class="form-input" min="1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">允许注册的邮箱域名（逗号分隔，留空不限制）</label>
+              <input type="text" id="allowedEmailDomains" class="form-input" placeholder="例如：example.com, school.edu">
+            </div>
+            <button type="submit" class="btn btn-success">保存配置</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 修改限额弹窗 -->
+  <div class="modal-overlay" id="editLimitModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">修改项目限额</h3>
+        <button class="modal-close" onclick="closeEditLimitModal()">&times;</button>
+      </div>
+      <form id="editLimitForm">
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+          <label class="form-label">用户</label>
+          <input type="text" id="editUserEmail" class="form-input" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">项目限额</label>
+          <input type="number" id="editMaxProjects" class="form-input" min="0" required>
+        </div>
+        <div class="flex justify-between">
+          <button type="button" class="btn btn-secondary" onclick="closeEditLimitModal()">取消</button>
+          <button type="submit" class="btn btn-success">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('platform_token');
+    const user = JSON.parse(localStorage.getItem('platform_user') || '{}');
+
+    if (!token || !user.isSuperAdmin) {
+      window.location.href = 'login.html';
+    }
+
+    document.getElementById('userName').textContent = user.name;
+
+    // 加载统计数据
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/superadmin/stats', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          document.getElementById('totalUsers').textContent = result.data.totalUsers;
+          document.getElementById('totalProjects').textContent = result.data.totalProjects;
+          document.getElementById('recentUsers').textContent = result.data.recentUsers;
+          document.getElementById('recentProjects').textContent = result.data.recentProjects;
+        }
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+      }
+    }
+
+    // 加载用户列表
+    async function loadUsers() {
+      try {
+        const response = await fetch('/api/superadmin/users', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          const usersHtml = result.data.map(u => `
+            <tr>
+              <td>${u.id}</td>
+              <td>${u.email}</td>
+              <td>${u.name}</td>
+              <td>${u.projectCount}</td>
+              <td>${u.maxProjects}</td>
+              <td>${new Date(u.createdAt).toLocaleString('zh-CN')}</td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="editUserLimit(${u.id}, '${u.email}', ${u.maxProjects})">修改限额</button>
+              </td>
+            </tr>
+          `).join('');
+
+          document.getElementById('usersTable').innerHTML = usersHtml;
+        }
+      } catch (error) {
+        console.error('加载用户列表失败:', error);
+      }
+    }
+
+    // 加载配置
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/superadmin/config', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          const configs = result.data.reduce((acc, c) => ({ ...acc, [c.key]: c.value }), {});
+          document.getElementById('defaultMaxProjects').value = configs.default_max_projects || 3;
+          document.getElementById('allowedEmailDomains').value = configs.allowed_email_domains || '';
+        }
+      } catch (error) {
+        console.error('加载配置失败:', error);
+      }
+    }
+
+    // 保存配置
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const defaultMaxProjects = document.getElementById('defaultMaxProjects').value;
+      const allowedEmailDomains = document.getElementById('allowedEmailDomains').value;
+
+      try {
+        await Promise.all([
+          fetch('/api/superadmin/config', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+              key: 'default_max_projects',
+              value: defaultMaxProjects,
+              description: '新用户默认项目数量限制'
+            })
+          }),
+          fetch('/api/superadmin/config', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+              key: 'allowed_email_domains',
+              value: allowedEmailDomains,
+              description: '允许注册的邮箱域名'
+            })
+          })
+        ]);
+
+        alert('配置保存成功');
+      } catch (error) {
+        console.error('保存配置失败:', error);
+        alert('保存失败，请稍后重试');
+      }
+    });
+
+    // 修改用户限额
+    function editUserLimit(userId, email, maxProjects) {
+      document.getElementById('editUserId').value = userId;
+      document.getElementById('editUserEmail').value = email;
+      document.getElementById('editMaxProjects').value = maxProjects;
+      document.getElementById('editLimitModal').classList.add('active');
+    }
+
+    function closeEditLimitModal() {
+      document.getElementById('editLimitModal').classList.remove('active');
+    }
+
+    document.getElementById('editLimitForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const userId = document.getElementById('editUserId').value;
+      const maxProjects = document.getElementById('editMaxProjects').value;
+
+      try {
+        const response = await fetch(`/api/superadmin/users/${userId}/max-projects`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ maxProjects: parseInt(maxProjects) })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert('限额修改成功');
+          closeEditLimitModal();
+          loadUsers();
+        } else {
+          alert(result.message || '修改失败');
+        }
+      } catch (error) {
+        console.error('修改限额失败:', error);
+        alert('修改失败，请稍后重试');
+      }
+    });
+
+    function logout() {
+      localStorage.removeItem('platform_token');
+      localStorage.removeItem('platform_user');
+      window.location.href = 'login.html';
+    }
+
+    loadStats();
+    loadUsers();
+    loadConfig();
+  </script>
+</body>
+</html>
