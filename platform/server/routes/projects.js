@@ -254,4 +254,113 @@ router.delete('/:projectId/collaborators/:userId', authenticate, checkProjectAcc
   }
 });
 
+/**
+ * 获取项目安全设置
+ * GET /api/projects/:projectId/security-settings
+ */
+router.get('/:projectId/security-settings', authenticate, checkProjectAccess, requireProjectAdmin, async (req, res) => {
+  try {
+    const { getProjectDb } = require('../config/database');
+    const projectDb = getProjectDb(req.project.id);
+
+    // 获取配置
+    const [results] = await projectDb.query(
+      "SELECT key, value FROM system_config WHERE key IN ('registration_enabled')"
+    );
+
+    const settings = {};
+    results.forEach(r => {
+      settings[r.key] = r.value;
+    });
+
+    res.json({
+      code: 200,
+      data: {
+        registrationEnabled: settings.registration_enabled === 'true',
+        adminUsername: settings.admin_username || 'admin'
+      }
+    });
+  } catch (error) {
+    console.error('获取安全设置错误:', error);
+    res.status(500).json({ code: 500, message: '获取安全设置失败' });
+  }
+});
+
+/**
+ * 更新管理员凭据
+ * PUT /api/projects/:projectId/admin-credentials
+ */
+router.put('/:projectId/admin-credentials', authenticate, checkProjectAccess, requireProjectAdmin, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ code: 400, message: '用户名和密码不能为空' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ code: 400, message: '密码至少需要6位' });
+    }
+
+    const { getProjectDb } = require('../config/database');
+    const projectDb = getProjectDb(req.project.id);
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 更新管理员账号
+    await projectDb.query(
+      "UPDATE users SET studentId = ?, password = ? WHERE role = 'admin'",
+      { replacements: [username, hashedPassword] }
+    );
+
+    res.json({
+      code: 200,
+      message: '管理员凭据已更新'
+    });
+  } catch (error) {
+    console.error('更新管理员凭据错误:', error);
+    res.status(500).json({ code: 500, message: '更新管理员凭据失败' });
+  }
+});
+
+/**
+ * 更新注册开关（仅超级管理员可用）
+ * PUT /api/projects/:projectId/registration-setting
+ */
+router.put('/:projectId/registration-setting', authenticate, async (req, res) => {
+  try {
+    // 只有超级管理员可以控制注册开关
+    if (!req.user.isSuperAdmin) {
+      return res.status(403).json({ code: 403, message: '只有超级管理员可以控制注册开关' });
+    }
+
+    const { enabled } = req.body;
+    const project = await Project.findByPk(req.params.projectId);
+
+    if (!project) {
+      return res.status(404).json({ code: 404, message: '项目不存在' });
+    }
+
+    const { getProjectDb } = require('../config/database');
+    const projectDb = getProjectDb(project.id);
+
+    // 更新或插入配置
+    await projectDb.query(
+      `INSERT INTO system_config (key, value, description)
+       VALUES ('registration_enabled', ?, '用户注册开关')
+       ON CONFLICT(key) DO UPDATE SET value = ?`,
+      { replacements: [enabled ? 'true' : 'false', enabled ? 'true' : 'false'] }
+    );
+
+    res.json({
+      code: 200,
+      message: enabled ? '注册功能已开启' : '注册功能已关闭'
+    });
+  } catch (error) {
+    console.error('更新注册设置错误:', error);
+    res.status(500).json({ code: 500, message: '更新注册设置失败' });
+  }
+});
+
 module.exports = router;
+

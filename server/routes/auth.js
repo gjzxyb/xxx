@@ -44,6 +44,13 @@ router.post('/login', async (req, res) => {
  */
 router.post('/register', async (req, res) => {
   try {
+    // 检查注册是否开放（默认关闭）
+    const { SystemConfig } = require('../models');
+    const registrationEnabled = await SystemConfig.getValue('registration_enabled', 'false');
+    if (registrationEnabled !== 'true') {
+      return error(res, '注册功能已关闭，请联系管理员', 403);
+    }
+
     const { studentId, name, password, className, phone } = req.body;
 
     if (!studentId || !name || !password) {

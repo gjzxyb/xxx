@@ -235,6 +235,28 @@
           </div>
         </div>
 
+        <!-- 项目安全管理 -->
+        <div class="card config-section">
+          <div class="card-header">
+            <h3 class="card-title">项目安全管理（协作系统注册控制）</h3>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>项目名称</th>
+                  <th>所有者</th>
+                  <th>状态</th>
+                  <th>协作系统注册</th>
+                </tr>
+              </thead>
+              <tbody id="projectsTable">
+                <tr><td colspan="4" class="text-center">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- 平台配置 -->
         <div class="card config-section">
           <div class="card-header">
@@ -630,9 +652,67 @@
       window.location.href = 'login.html';
     }
 
+    // 加载项目列表（仅超管页面）
+    async function loadProjects() {
+      try {
+        const response = await fetch('/api/superadmin/projects', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          const projectsHtml = result.data.map(p => `
+            <tr>
+              <td>${p.name}</td>
+              <td>${p.ownerEmail || '-'}</td>
+              <td>${p.status === 'running' ? '<span class="status-badge status-enabled">运行中</span>' : '<span class="status-badge status-disabled">已停止</span>'}</td>
+              <td>
+                <label class="switch">
+                  <input type="checkbox" ${p.registrationEnabled ? 'checked' : ''} onchange="toggleProjectRegistration('${p.id}', this.checked)">
+                  <span class="slider"></span>
+                </label>
+              </td>
+            </tr>
+          `).join('');
+
+          document.getElementById('projectsTable').innerHTML = projectsHtml || '<tr><td colspan="4" class="text-center">暂无项目</td></tr>';
+        }
+      } catch (error) {
+        console.error('加载项目列表失败:', error);
+      }
+    }
+
+    // 切换项目注册开关
+    async function toggleProjectRegistration(projectId, enabled) {
+      try {
+        const response = await fetch(`/api/projects/${projectId}/registration-setting`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ enabled })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          showToast(result.message, 'success');
+        } else {
+          showToast(result.message || '更新失败', 'error');
+          loadProjects();
+        }
+      } catch (error) {
+        console.error('更新项目注册设置失败:', error);
+        showToast('更新失败，请稍后重试', 'error');
+        loadProjects();
+      }
+    }
+
     loadStats();
     loadUsers();
     loadConfig();
+    loadProjects();
   </script>
 </body>
 </html>

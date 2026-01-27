@@ -150,6 +150,52 @@ router.get('/stats', authenticate, requireSuperAdmin, async (req, res) => {
 });
 
 /**
+ * 获取所有项目列表（含注册开关状态）
+ * GET /api/superadmin/projects
+ */
+router.get('/projects', authenticate, requireSuperAdmin, async (req, res) => {
+  try {
+    const { getProjectDb } = require('../config/database');
+
+    const projects = await Project.findAll({
+      order: [['createdAt', 'DESC']]
+    });
+
+    const projectsWithSettings = await Promise.all(projects.map(async (project) => {
+      const owner = await PlatformUser.findByPk(project.ownerId);
+
+      // 尝试获取项目的注册设置
+      let registrationEnabled = false;
+      try {
+        const projectDb = getProjectDb(project.id);
+        const [results] = await projectDb.query(
+          "SELECT value FROM system_config WHERE key = 'registration_enabled'"
+        );
+        registrationEnabled = results[0]?.value === 'true';
+      } catch (e) {
+        // 项目数据库可能不存在
+      }
+
+      return {
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        ownerEmail: owner?.email,
+        registrationEnabled
+      };
+    }));
+
+    res.json({
+      code: 200,
+      data: projectsWithSettings
+    });
+  } catch (error) {
+    console.error('获取项目列表错误:', error);
+    res.status(500).json({ code: 500, message: '获取项目列表失败' });
+  }
+});
+
+/**
  * 编辑用户信息
  * PUT /api/superadmin/users/:userId
  */

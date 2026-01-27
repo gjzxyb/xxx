@@ -54,8 +54,15 @@ async function startProject(projectId) {
     await project.update({ status: 'starting' });
 
     // 启动项目进程
-    const dbPath = path.join(__dirname, '../databases/projects', project.dbFilename);
+    const dbPath = path.join(__dirname, '../../databases/projects', project.dbFilename);
     const serverPath = path.join(__dirname, '../../../server/app.js');
+    const cwdPath = path.join(__dirname, '../../../server');
+
+    console.log(`[项目 ${projectId}] 启动参数:`);
+    console.log(`  DB_PATH: ${dbPath}`);
+    console.log(`  Server: ${serverPath}`);
+    console.log(`  CWD: ${cwdPath}`);
+    console.log(`  PORT: ${port}`);
 
     const env = {
       ...process.env,
@@ -66,8 +73,9 @@ async function startProject(projectId) {
 
     const projectProcess = spawn('node', [serverPath], {
       env,
-      cwd: path.join(__dirname, '../../../server'),
-      detached: false
+      cwd: cwdPath,
+      detached: false,
+      stdio: ['pipe', 'pipe', 'pipe']
     });
 
     projectProcess.stdout.on('data', (data) => {

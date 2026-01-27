@@ -95,8 +95,8 @@ async function initializeData() {
 // 启动服务器
 async function startServer() {
   try {
-    // 同步数据库
-    await sequelize.sync({ alter: false });
+    // 同步数据库（使用 alter:true 自动添加缺失的列）
+    await sequelize.sync({ alter: true });
     console.log('✓ 数据库已连接');
 
     // 初始化数据
