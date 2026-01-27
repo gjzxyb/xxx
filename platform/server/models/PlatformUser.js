@@ -39,6 +39,11 @@ module.exports = (sequelize) => {
       defaultValue: false,
       field: 'is_super_admin'
     },
+    isDisabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_disabled'
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

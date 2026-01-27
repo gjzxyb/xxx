@@ -29,6 +29,17 @@ async function initializeDatabase() {
     await platformDb.sync();
     console.log('✓ 平台数据库已连接');
 
+    // 检查并添加 is_disabled 列（如果不存在）
+    try {
+      await platformDb.query("SELECT is_disabled FROM platform_users LIMIT 1");
+    } catch (e) {
+      if (e.message.includes('no such column')) {
+        console.log('  添加 is_disabled 列...');
+        await platformDb.query("ALTER TABLE platform_users ADD COLUMN is_disabled INTEGER DEFAULT 0");
+        console.log('  ✓ is_disabled 列已添加');
+      }
+    }
+
     // 检查是否需要创建超级管理员
     const adminCount = await PlatformUser.count({
       where: { isSuperAdmin: true }

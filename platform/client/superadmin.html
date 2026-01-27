@@ -5,6 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>超级管理员 - 分科自选 SaaS 平台</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+      color: white;
+    }
+    .btn-warning:hover {
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .status-enabled {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+    .status-disabled {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+    .status-admin {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--primary-light);
+    }
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .config-section {
+      margin-top: 2rem;
+    }
+    .config-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .config-row:last-child {
+      border-bottom: none;
+    }
+    .config-label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .config-label span {
+      font-weight: 500;
+    }
+    .config-label small {
+      color: var(--text-secondary);
+    }
+    .switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--bg-hover);
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--success);
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    .modal-wide {
+      max-width: 600px;
+    }
+    .confirm-delete-info {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .confirm-delete-info p {
+      color: var(--danger);
+      margin-bottom: 0.5rem;
+    }
+    .confirm-delete-info ul {
+      color: var(--text-secondary);
+      padding-left: 1.5rem;
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 10000;
+      transform: translateX(120%);
+      transition: transform 0.3s ease;
+    }
+    .toast.show {
+      transform: translateX(0);
+    }
+    .toast-success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .toast-error {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    .toast-info {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+  </style>
 </head>
 <body>
   <div class="page-wrapper">
@@ -56,6 +194,7 @@
                   <th>ID</th>
                   <th>邮箱</th>
                   <th>姓名</th>
+                  <th>状态</th>
                   <th>项目数</th>
                   <th>项目限额</th>
                   <th>注册时间</th>
@@ -63,14 +202,41 @@
                 </tr>
               </thead>
               <tbody id="usersTable">
-                <tr><td colspan="7" class="text-center">加载中...</td></tr>
+                <tr><td colspan="8" class="text-center">加载中...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
+        <!-- 注册控制 -->
+        <div class="card config-section">
+          <div class="card-header">
+            <h3 class="card-title">注册控制</h3>
+          </div>
+          <div class="config-row">
+            <div class="config-label">
+              <span>开放注册</span>
+              <small>关闭后新用户将无法注册</small>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="registrationOpen" onchange="updateConfig('registration_open', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="config-row">
+            <div class="config-label">
+              <span>防机器注册验证码</span>
+              <small>开启后注册时需要输入数学验证码</small>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="captchaEnabled" onchange="updateConfig('captcha_enabled', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
         <!-- 平台配置 -->
-        <div class="card" style="margin-top: 2rem;">
+        <div class="card config-section">
           <div class="card-header">
             <h3 class="card-title">平台配置</h3>
           </div>
@@ -90,28 +256,54 @@
     </main>
   </div>
 
-  <!-- 修改限额弹窗 -->
-  <div class="modal-overlay" id="editLimitModal">
+  <!-- 编辑用户弹窗 -->
+  <div class="modal-overlay" id="editUserModal">
     <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title">修改项目限额</h3>
-        <button class="modal-close" onclick="closeEditLimitModal()">&times;</button>
+        <h3 class="modal-title">编辑用户</h3>
+        <button class="modal-close" onclick="closeEditUserModal()">&times;</button>
       </div>
-      <form id="editLimitForm">
+      <form id="editUserForm">
         <input type="hidden" id="editUserId">
         <div class="form-group">
-          <label class="form-label">用户</label>
-          <input type="text" id="editUserEmail" class="form-input" readonly>
+          <label class="form-label">邮箱</label>
+          <input type="email" id="editUserEmail" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">姓名</label>
+          <input type="text" id="editUserName" class="form-input" required>
         </div>
         <div class="form-group">
           <label class="form-label">项目限额</label>
           <input type="number" id="editMaxProjects" class="form-input" min="0" required>
         </div>
         <div class="flex justify-between">
-          <button type="button" class="btn btn-secondary" onclick="closeEditLimitModal()">取消</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">取消</button>
           <button type="submit" class="btn btn-success">保存</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- 删除确认弹窗 -->
+  <div class="modal-overlay" id="deleteUserModal">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3 class="modal-title">确认删除用户</h3>
+        <button class="modal-close" onclick="closeDeleteUserModal()">&times;</button>
+      </div>
+      <div class="confirm-delete-info">
+        <p>⚠️ 此操作不可恢复！</p>
+        <ul>
+          <li>将删除用户 <strong id="deleteUserEmail"></strong></li>
+          <li>将删除该用户的所有项目（共 <strong id="deleteUserProjects">0</strong> 个）</li>
+          <li>将删除所有相关的项目数据库文件</li>
+        </ul>
+      </div>
+      <div class="flex justify-between">
+        <button class="btn btn-secondary" onclick="closeDeleteUserModal()">取消</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteUser()">确认删除</button>
+      </div>
     </div>
   </div>
 
@@ -124,6 +316,8 @@
     }
 
     document.getElementById('userName').textContent = user.name;
+
+    let pendingDeleteUserId = null;
 
     // 加载统计数据
     async function loadStats() {
@@ -153,19 +347,52 @@
         const result = await response.json();
 
         if (result.code === 200) {
-          const usersHtml = result.data.map(u => `
-            <tr>
-              <td>${u.id}</td>
-              <td>${u.email}</td>
-              <td>${u.name}</td>
-              <td>${u.projectCount}</td>
-              <td>${u.maxProjects}</td>
-              <td>${new Date(u.createdAt).toLocaleString('zh-CN')}</td>
-              <td>
-                <button class="btn btn-sm btn-primary" onclick="editUserLimit(${u.id}, '${u.email}', ${u.maxProjects})">修改限额</button>
-              </td>
-            </tr>
-          `).join('');
+          const usersHtml = result.data.map(u => {
+            let statusBadge = '';
+            if (u.isSuperAdmin) {
+              statusBadge = '<span class="status-badge status-admin">超级管理员</span>';
+            } else if (u.isDisabled) {
+              statusBadge = '<span class="status-badge status-disabled">已禁用</span>';
+            } else {
+              statusBadge = '<span class="status-badge status-enabled">正常</span>';
+            }
+
+            let actionButtons = `
+              <button class="btn btn-sm btn-primary" onclick="editUser(${u.id}, '${u.email}', '${u.name}', ${u.maxProjects})">编辑</button>
+            `;
+
+            if (!u.isSuperAdmin) {
+              if (u.isDisabled) {
+                actionButtons += `
+                  <button class="btn btn-sm btn-success" onclick="toggleUserStatus(${u.id}, false)">启用</button>
+                `;
+              } else {
+                actionButtons += `
+                  <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${u.id}, true)">禁用</button>
+                `;
+              }
+              actionButtons += `
+                <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id}, '${u.email}', ${u.projectCount})">删除</button>
+              `;
+            }
+
+            return `
+              <tr>
+                <td>${u.id}</td>
+                <td>${u.email}</td>
+                <td>${u.name}</td>
+                <td>${statusBadge}</td>
+                <td>${u.projectCount}</td>
+                <td>${u.maxProjects}</td>
+                <td>${new Date(u.createdAt).toLocaleString('zh-CN')}</td>
+                <td>
+                  <div class="action-buttons">
+                    ${actionButtons}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
 
           document.getElementById('usersTable').innerHTML = usersHtml;
         }
@@ -186,10 +413,58 @@
           const configs = result.data.reduce((acc, c) => ({ ...acc, [c.key]: c.value }), {});
           document.getElementById('defaultMaxProjects').value = configs.default_max_projects || 3;
           document.getElementById('allowedEmailDomains').value = configs.allowed_email_domains || '';
+          document.getElementById('registrationOpen').checked = configs.registration_open !== 'false';
+          document.getElementById('captchaEnabled').checked = configs.captcha_enabled === 'true';
         }
       } catch (error) {
         console.error('加载配置失败:', error);
       }
+    }
+
+    // 更新配置开关
+    async function updateConfig(key, value) {
+      const keyNames = {
+        'registration_open': '注册开关',
+        'captcha_enabled': '验证码'
+      };
+      try {
+        const response = await fetch('/api/superadmin/config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            key,
+            value: value.toString()
+          })
+        });
+        const result = await response.json();
+        if (result.code === 200) {
+          showToast(`${keyNames[key] || key} 已${value ? '开启' : '关闭'}`, 'success');
+        } else {
+          showToast(result.message || '更新失败', 'error');
+          loadConfig(); // 恢复原状态
+        }
+      } catch (error) {
+        console.error('更新配置失败:', error);
+        showToast('更新失败，请稍后重试', 'error');
+        loadConfig();
+      }
+    }
+
+    // Toast 提示函数
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-' + type;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 2000);
     }
 
     // 保存配置
@@ -227,55 +502,127 @@
           })
         ]);
 
-        alert('配置保存成功');
+        showToast('配置保存成功', 'success');
       } catch (error) {
         console.error('保存配置失败:', error);
-        alert('保存失败，请稍后重试');
+        showToast('保存失败，请稍后重试', 'error');
       }
     });
 
-    // 修改用户限额
-    function editUserLimit(userId, email, maxProjects) {
+    // 编辑用户
+    function editUser(userId, email, name, maxProjects) {
       document.getElementById('editUserId').value = userId;
       document.getElementById('editUserEmail').value = email;
+      document.getElementById('editUserName').value = name;
       document.getElementById('editMaxProjects').value = maxProjects;
-      document.getElementById('editLimitModal').classList.add('active');
+      document.getElementById('editUserModal').classList.add('active');
     }
 
-    function closeEditLimitModal() {
-      document.getElementById('editLimitModal').classList.remove('active');
+    function closeEditUserModal() {
+      document.getElementById('editUserModal').classList.remove('active');
     }
 
-    document.getElementById('editLimitForm').addEventListener('submit', async (e) => {
+    document.getElementById('editUserForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const userId = document.getElementById('editUserId').value;
+      const email = document.getElementById('editUserEmail').value;
+      const name = document.getElementById('editUserName').value;
       const maxProjects = document.getElementById('editMaxProjects').value;
 
       try {
-        const response = await fetch(`/api/superadmin/users/${userId}/max-projects`, {
+        const response = await fetch(`/api/superadmin/users/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + token
           },
-          body: JSON.stringify({ maxProjects: parseInt(maxProjects) })
+          body: JSON.stringify({ email, name, maxProjects: parseInt(maxProjects) })
         });
 
         const result = await response.json();
 
         if (result.code === 200) {
-          alert('限额修改成功');
-          closeEditLimitModal();
+          alert('用户信息更新成功');
+          closeEditUserModal();
           loadUsers();
         } else {
-          alert(result.message || '修改失败');
+          alert(result.message || '更新失败');
         }
       } catch (error) {
-        console.error('修改限额失败:', error);
-        alert('修改失败，请稍后重试');
+        console.error('更新用户失败:', error);
+        alert('更新失败，请稍后重试');
       }
     });
+
+    // 禁用/启用用户
+    async function toggleUserStatus(userId, isDisabled) {
+      const action = isDisabled ? '禁用' : '启用';
+      if (!confirm(`确定要${action}此用户吗？`)) return;
+
+      try {
+        const response = await fetch(`/api/superadmin/users/${userId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ isDisabled })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert(result.message);
+          loadUsers();
+        } else {
+          alert(result.message || `${action}失败`);
+        }
+      } catch (error) {
+        console.error(`${action}用户失败:`, error);
+        alert(`${action}失败，请稍后重试`);
+      }
+    }
+
+    // 删除用户
+    function deleteUser(userId, email, projectCount) {
+      pendingDeleteUserId = userId;
+      document.getElementById('deleteUserEmail').textContent = email;
+      document.getElementById('deleteUserProjects').textContent = projectCount;
+      document.getElementById('deleteUserModal').classList.add('active');
+    }
+
+    function closeDeleteUserModal() {
+      document.getElementById('deleteUserModal').classList.remove('active');
+      pendingDeleteUserId = null;
+    }
+
+    async function confirmDeleteUser() {
+      if (!pendingDeleteUserId) return;
+
+      try {
+        const response = await fetch(`/api/superadmin/users/${pendingDeleteUserId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert(`用户已删除，共删除 ${result.data.deletedProjects} 个项目`);
+          closeDeleteUserModal();
+          loadUsers();
+          loadStats();
+        } else {
+          alert(result.message || '删除失败');
+        }
+      } catch (error) {
+        console.error('删除用户失败:', error);
+        alert('删除失败，请稍后重试');
+      }
+    }
 
     function logout() {
       localStorage.removeItem('platform_token');

@@ -50,6 +50,53 @@
       text-align: center;
       color: var(--text-secondary);
     }
+    .captcha-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    .captcha-group .form-input {
+      flex: 1;
+    }
+    .captcha-question {
+      background: var(--bg-hover);
+      padding: 0.875rem 1rem;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      color: var(--primary-light);
+      min-width: 100px;
+      text-align: center;
+    }
+    .captcha-refresh {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.5rem;
+      font-size: 1.2rem;
+    }
+    .captcha-refresh:hover {
+      color: var(--text-primary);
+    }
+    .registration-closed {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    .registration-closed-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    .registration-closed h2 {
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .registration-closed p {
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -61,6 +108,15 @@
         <p class="login-subtitle">分科自选 SaaS 平台</p>
       </div>
 
+      <!-- 注册关闭提示 -->
+      <div id="registrationClosed" class="registration-closed hidden">
+        <div class="registration-closed-icon">🚫</div>
+        <h2>注册已关闭</h2>
+        <p>当前系统不接受新用户注册，请联系管理员。</p>
+        <a href="login.html" class="btn btn-primary">返回登录</a>
+      </div>
+
+      <!-- 注册表单 -->
       <form id="registerForm">
         <div class="form-group">
           <label class="form-label">邮箱</label>
@@ -78,16 +134,69 @@
           <label class="form-label">确认密码</label>
           <input type="password" id="confirmPassword" class="form-input" required placeholder="请再次输入密码">
         </div>
+        <div class="form-group hidden" id="captchaGroup">
+          <label class="form-label">验证码</label>
+          <div class="captcha-group">
+            <span class="captcha-question" id="captchaQuestion">加载中...</span>
+            <input type="text" id="captchaAnswer" class="form-input" placeholder="答案">
+            <button type="button" class="captcha-refresh" onclick="loadCaptcha()" title="刷新验证码">🔄</button>
+          </div>
+        </div>
+        <input type="hidden" id="captchaId">
         <button type="submit" class="btn btn-success" style="width: 100%;">注册</button>
       </form>
 
-      <div class="form-footer">
+      <div class="form-footer" id="formFooter">
         已有账号？<a href="login.html" style="color: var(--primary-light);">立即登录</a>
       </div>
     </div>
   </div>
 
   <script>
+    let captchaEnabled = false;
+
+    // 检查注册状态
+    async function checkRegistrationStatus() {
+      try {
+        const response = await fetch('/api/auth/registration-status');
+        const result = await response.json();
+
+        if (result.code === 200) {
+          if (!result.data.registrationOpen) {
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('formFooter').classList.add('hidden');
+            document.getElementById('registrationClosed').classList.remove('hidden');
+            return;
+          }
+
+          captchaEnabled = result.data.captchaEnabled;
+          if (captchaEnabled) {
+            document.getElementById('captchaGroup').classList.remove('hidden');
+            loadCaptcha();
+          }
+        }
+      } catch (error) {
+        console.error('检查注册状态失败:', error);
+      }
+    }
+
+    // 加载验证码
+    async function loadCaptcha() {
+      try {
+        const response = await fetch('/api/auth/captcha');
+        const result = await response.json();
+
+        if (result.code === 200) {
+          document.getElementById('captchaId').value = result.data.captchaId;
+          document.getElementById('captchaQuestion').textContent = result.data.question;
+          document.getElementById('captchaAnswer').value = '';
+        }
+      } catch (error) {
+        console.error('加载验证码失败:', error);
+        document.getElementById('captchaQuestion').textContent = '加载失败';
+      }
+    }
+
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -106,11 +215,26 @@
         return;
       }
 
+      const body = { email, name, password };
+
+      if (captchaEnabled) {
+        const captchaId = document.getElementById('captchaId').value;
+        const captchaAnswer = document.getElementById('captchaAnswer').value;
+
+        if (!captchaAnswer) {
+          alert('请输入验证码');
+          return;
+        }
+
+        body.captchaId = captchaId;
+        body.captchaAnswer = captchaAnswer;
+      }
+
       try {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, password })
+          body: JSON.stringify(body)
         });
 
         const result = await response.json();
@@ -122,12 +246,20 @@
           window.location.href = 'dashboard.html';
         } else {
           alert(result.message || '注册失败');
+          if (captchaEnabled) {
+            loadCaptcha(); // 刷新验证码
+          }
         }
       } catch (error) {
         console.error('注册错误:', error);
         alert('注册失败，请稍后重试');
+        if (captchaEnabled) {
+          loadCaptcha();
+        }
       }
     });
+
+    checkRegistrationStatus();
   </script>
 </body>
 </html>
