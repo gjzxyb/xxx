@@ -265,7 +265,7 @@ router.get('/:projectId/security-settings', authenticate, checkProjectAccess, re
 
     // 获取配置
     const [results] = await projectDb.query(
-      "SELECT key, value FROM system_config WHERE key IN ('registration_enabled')"
+      "SELECT `key`, value FROM system_configs WHERE `key` IN ('registration_enabled')"
     );
 
     const settings = {};
@@ -346,9 +346,9 @@ router.put('/:projectId/registration-setting', authenticate, async (req, res) =>
 
     // 更新或插入配置
     await projectDb.query(
-      `INSERT INTO system_config (key, value, description)
-       VALUES ('registration_enabled', ?, '用户注册开关')
-       ON CONFLICT(key) DO UPDATE SET value = ?`,
+      `INSERT INTO system_configs (\`key\`, value, description, createdAt, updatedAt)
+       VALUES ('registration_enabled', ?, '用户注册开关', datetime('now'), datetime('now'))
+       ON CONFLICT(\`key\`) DO UPDATE SET value = ?, updatedAt = datetime('now')`,
       { replacements: [enabled ? 'true' : 'false', enabled ? 'true' : 'false'] }
     );
 

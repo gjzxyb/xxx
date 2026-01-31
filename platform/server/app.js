@@ -4,7 +4,7 @@ const path = require('path');
 const { platformDb, PlatformUser, PlatformConfig } = require('./models');
 
 const app = express();
-const PORT = process.env.PLATFORM_PORT || 4000;
+const PORT = process.env.PLATFORM_PORT || 4001;
 
 // 中间件
 app.use(cors());

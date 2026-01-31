@@ -169,7 +169,7 @@ router.get('/projects', authenticate, requireSuperAdmin, async (req, res) => {
       try {
         const projectDb = getProjectDb(project.id);
         const [results] = await projectDb.query(
-          "SELECT value FROM system_config WHERE key = 'registration_enabled'"
+          "SELECT value FROM system_configs WHERE `key` = 'registration_enabled'"
         );
         registrationEnabled = results[0]?.value === 'true';
       } catch (e) {
