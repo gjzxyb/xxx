@@ -161,7 +161,7 @@ const api = {
 
     setSelectionTime: (startTime, endTime) => request('/admin/selection-time', {
       method: 'PUT',
-      body: JSON.stringify({ startTime, endTime })
+      body: JSON.stringify({ selectionStartTime: startTime, selectionEndTime: endTime })
     }),
 
     getStudents: (params = {}) => {

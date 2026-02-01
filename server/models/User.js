@@ -38,6 +38,12 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(20),
     allowNull: true,
     comment: '手机号'
+  },
+  projectId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'project_id',
+    comment: '所属项目ID（租户隔离）'
   }
 }, {
   tableName: 'users',

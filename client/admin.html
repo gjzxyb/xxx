@@ -64,11 +64,36 @@
             <div class="card-header">
               <h3 class="card-title">快捷操作</h3>
             </div>
-            <div class="flex gap-2" style="flex-wrap: wrap;">
-              <a href="#" class="btn btn-primary" id="exportBtn">📥 导出Excel</a>
+            <div class="flex gap-2" style="flex-wrap: wrap; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <span style="font-weight: 500;">🔓 允许学生注册</span>
+                <label class="switch" style="position: relative; width: 50px; height: 26px; margin: 0;">
+                  <input type="checkbox" id="registrationToggle" style="opacity: 0; width: 0; height: 0;">
+                  <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-hover); transition: 0.3s; border-radius: 26px;"></span>
+                </label>
+              </div>
               <button class="btn btn-secondary" onclick="switchTab('time')">⏰ 设置时间</button>
               <button class="btn btn-secondary" onclick="switchTab('subjects')">📚 管理科目</button>
             </div>
+            <style>
+              .slider:before {
+                position: absolute;
+                content: "";
+                height: 20px;
+                width: 20px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: 0.3s;
+                border-radius: 50%;
+              }
+              input:checked + .slider {
+                background-color: var(--success);
+              }
+              input:checked + .slider:before {
+                transform: translateX(24px);
+              }
+            </style>
           </div>
         </div>
 
@@ -398,38 +423,78 @@
       }
     }
 
-    // 导出Excel
-    document.getElementById('exportBtn').addEventListener('click', (e) => {
-      e.preventDefault();
-      window.open(api.admin.exportUrl(), '_blank');
+    // 加载并初始化注册开关
+    async function loadRegistrationStatus() {
+      try {
+        const response = await fetch('/api/admin/registration-setting', {
+          headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        const result = await response.json();
+
+        if (result.code === 200) {
+          const toggle = document.getElementById('registrationToggle');
+          toggle.checked = result.data.registrationEnabled !== false;
+        }
+      } catch (error) {
+        console.error('加载注册状态失败:', error);
+      }
+    }
+
+    // 切换注册开关
+    document.getElementById('registrationToggle').addEventListener('change', async (e) => {
+      const enabled = e.target.checked;
+
+      try {
+        const response = await fetch('/api/admin/registration-setting', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + getToken()
+          },
+          body: JSON.stringify({ enabled })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert(result.message);
+        } else {
+          alert(result.message || '更新失败');
+          e.target.checked = !enabled;
+        }
+      } catch (error) {
+        console.error('切换注册开关失败:', error);
+        alert('操作失败，请稍后重试');
+        e.target.checked = !enabled;
+      }
     });
 
     // 加载时间设置
     async function loadTimeSettings() {
       const result = await api.selections.getStatus();
       if (result.code === 200) {
+        // 转换时间格式为 datetime-local 输入框需要的格式 (YYYY-MM-DDTHH:mm)
         if (result.data.startTime) {
-          document.getElementById('startTime').value = result.data.startTime;
+          const startDate = new Date(result.data.startTime);
+          document.getElementById('startTime').value = formatDateTimeLocal(startDate);
         }
         if (result.data.endTime) {
-          document.getElementById('endTime').value = result.data.endTime;
+          const endDate = new Date(result.data.endTime);
+          document.getElementById('endTime').value = formatDateTimeLocal(endDate);
         }
       }
     }
 
-    // 保存时间设置
-    document.getElementById('timeForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const startTime = document.getElementById('startTime').value;
-      const endTime = document.getElementById('endTime').value;
+    // 将Date对象格式化为datetime-local输入框需要的格式
+    function formatDateTimeLocal(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
 
-      const result = await api.admin.setSelectionTime(startTime, endTime);
-      if (result.code === 200) {
-        alert('时间设置已保存');
-      } else {
-        alert(result.message);
-      }
-    });
 
     // 加载科目列表
     async function loadSubjects() {
@@ -1102,9 +1167,41 @@
         btn.textContent = '开始导入';
       }
     }
+    // 时间设置表单提交
+    document.getElementById('timeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const startTime = document.getElementById('startTime').value;
+      const endTime = document.getElementById('endTime').value;
+
+      if (!startTime || !endTime) {
+        alert('请填写完整的时间设置');
+        return;
+      }
+
+      if (new Date(endTime) <= new Date(startTime)) {
+        alert('结束时间必须晚于开始时间');
+        return;
+      }
+
+      try {
+        const result = await api.admin.setSelectionTime(startTime, endTime);
+        if (result.code === 200) {
+          alert('时间设置已更新');
+          loadOverview();
+        } else {
+          alert(result.message || '更新失败');
+        }
+      } catch (err) {
+        console.error('更新错误:', err);
+        alert('更新失败');
+      }
+    });
+
 
     // 初始化
     loadOverview();
+    loadRegistrationStatus(); // 加载注册开关状态
   </script>
 </body>
 </html>

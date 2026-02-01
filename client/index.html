@@ -102,13 +102,39 @@
       setTimeout(() => alertBox.classList.add('hidden'), 5000);
     }
 
-    // 切换表单
-    document.getElementById('showRegister').addEventListener('click', (e) => {
+    // 检查注册状态
+    async function checkRegistrationStatus() {
+      try {
+        const response = await fetch('/api/auth/registration-status');
+        const result = await response.json();
+
+        if (result.code === 200 && result.data.registrationEnabled === false) {
+          // 注册已关闭
+          const registerLink = document.getElementById('showRegister');
+          registerLink.textContent = '注册已关闭';
+          registerLink.style.color = 'var(--text-muted)';
+          registerLink.style.cursor = 'not-allowed';
+          registerLink.style.pointerEvents = 'none';
+          registerLink.style.textDecoration = 'none';
+        }
+      } catch (error) {
+        console.error('检查注册状态失败:', error);
+        // 发生错误时不影响用户体验，默认允许注册
+      }
+    }
+
+    // 立即执行检查
+    checkRegistrationStatus();
+
+    // 切换表单 - 显示注册
+    function handleShowRegister(e) {
       e.preventDefault();
       loginForm.classList.add('hidden');
       registerForm.classList.remove('hidden');
-    });
+    }
+    document.getElementById('showRegister').addEventListener('click', handleShowRegister);
 
+    // 切换表单 - 返回登录
     document.getElementById('showLogin').addEventListener('click', (e) => {
       e.preventDefault();
       registerForm.classList.add('hidden');

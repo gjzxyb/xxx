@@ -16,8 +16,13 @@ const Subject = sequelize.define('Subject', {
   name: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    unique: true,
     comment: '科目名称'
+  },
+  projectId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'project_id',
+    comment: '项目ID（租户隔离）'
   },
   category: {
     type: DataTypes.ENUM('physics_history', 'four_electives'),
@@ -45,7 +50,13 @@ const Subject = sequelize.define('Subject', {
     comment: '是否启用'
   }
 }, {
-  tableName: 'subjects'
+  tableName: 'subjects',
+  indexes: [
+    {
+      unique: true,
+      fields: ['name', 'project_id']
+    }
+  ]
 });
 
 module.exports = Subject;

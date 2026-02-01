@@ -1,29 +1,34 @@
 const express = require('express');
 const router = express.Router();
-const { Selection, Subject, User, SystemConfig } = require('../models');
+const { Selection, Subject, User, SystemConfig, Project } = require('../models');
 const { success, error, notFound } = require('../utils/response');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 /**
- * 检查选科时间是否开放
+ * 检查选科时间是否开放（基于项目配置）
+ * @param {number} projectId - 项目ID
  */
-const checkSelectionTime = async () => {
-  const startTime = await SystemConfig.getValue('selection_start_time');
-  const endTime = await SystemConfig.getValue('selection_end_time');
+const checkSelectionTime = async (projectId) => {
+  const project = await Project.findByPk(projectId);
+  if (!project) {
+    return { open: false, message: '项目不存在' };
+  }
 
-  if (!startTime || !endTime) {
+  const { selectionStartTime, selectionEndTime } = project;
+
+  if (!selectionStartTime || !selectionEndTime) {
     return { open: false, message: '选科时间未设置' };
   }
 
   const now = new Date();
-  const start = new Date(startTime);
-  const end = new Date(endTime);
+  const start = new Date(selectionStartTime);
+  const end = new Date(selectionEndTime);
 
   if (now < start) {
-    return { open: false, message: `选科将于 ${startTime} 开始` };
+    return { open: false, message: `选科将于 ${selectionStartTime} 开始` };
   }
   if (now > end) {
-    return { open: false, message: `选科已于 ${endTime} 结束` };
+    return { open: false, message: `选科已于 ${selectionEndTime} 结束` };
   }
 
   return { open: true, message: '选科进行中' };
@@ -33,16 +38,21 @@ const checkSelectionTime = async () => {
  * 获取选科状态（时间是否开放）
  * GET /api/selections/status
  */
-router.get('/status', async (req, res) => {
+router.get('/status', authenticate, async (req, res) => {
   try {
-    const status = await checkSelectionTime();
-    const startTime = await SystemConfig.getValue('selection_start_time');
-    const endTime = await SystemConfig.getValue('selection_end_time');
+    const projectId = req.user.projectId;
+
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return error(res, '项目不存在');
+    }
+
+    const status = await checkSelectionTime(projectId);
 
     success(res, {
       ...status,
-      startTime,
-      endTime
+      startTime: project.selectionStartTime,
+      endTime: project.selectionEndTime
     });
   } catch (err) {
     console.error('获取选科状态错误:', err);
@@ -79,7 +89,8 @@ router.get('/my', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     // 检查时间
-    const timeStatus = await checkSelectionTime();
+    const projectId = req.user.projectId;
+    const timeStatus = await checkSelectionTime(projectId);
     if (!timeStatus.open) {
       return error(res, timeStatus.message);
     }
@@ -179,7 +190,8 @@ router.post('/', authenticate, async (req, res) => {
  */
 router.delete('/my', authenticate, async (req, res) => {
   try {
-    const timeStatus = await checkSelectionTime();
+    const projectId = req.user.projectId;
+    const timeStatus = await checkSelectionTime(projectId);
     if (!timeStatus.open) {
       return error(res, timeStatus.message);
     }

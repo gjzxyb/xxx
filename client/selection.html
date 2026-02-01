@@ -116,39 +116,103 @@
       window.location.href = '/';
     });
 
-    // 选科状态
-    let subjects = [];
-    let selectedPhysicsHistory = null;
-    let selectedElectives = [];
     let selectionOpen = false;
     let hasExistingSelection = false;
+    let subjects = []; // 学科列表
+
+    // 选择状态
+    let selectedPhysicsHistory = null;
+    let selectedElectives = [];
+
+    // 格式化日期时间
+    function formatDateTime(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
     // 加载选科状态
     async function loadStatus() {
       const statusAlert = document.getElementById('statusAlert');
-      const result = await api.selections.getStatus();
 
-      if (result.code === 200) {
-        const { open, message, startTime, endTime } = result.data;
-        selectionOpen = open;
+      try {
+        // 使用selections API获取选科状态
+        const result = await api.selections.getStatus();
 
-        if (open) {
-          statusAlert.className = 'alert alert-success mb-4';
-          statusAlert.innerHTML = `<span>✅ ${message} | 截止时间: ${endTime}</span>`;
+        if (result.code === 200) {
+          const { open, message, startTime, endTime } = result.data;
+          selectionOpen = open;
+
+          if (open) {
+            // 选科开放中
+            let displayMessage = '✅ 选科进行中';
+            if (endTime) {
+              displayMessage += ` | 截止时间: ${formatDateTime(endTime)}`;
+            }
+            statusAlert.className = 'alert alert-success mb-4';
+            statusAlert.innerHTML = `<span>${displayMessage}</span>`;
+          } else {
+            // 选科未开放
+            statusAlert.className = 'alert alert-warning mb-4';
+            statusAlert.innerHTML = `<span>⏰ ${message}</span>`;
+
+            // 显示友好提示
+            if (startTime || endTime) {
+              let detailMessage = message;
+              if (startTime) detailMessage += '\n开始时间：' + formatDateTime(startTime);
+              if (endTime) detailMessage += '\n结束时间：' + formatDateTime(endTime);
+
+              setTimeout(() => {
+                alert(detailMessage);
+              }, 500);
+            }
+          }
         } else {
-          statusAlert.className = 'alert alert-warning mb-4';
-          statusAlert.innerHTML = `<span>⏰ ${message}</span>`;
+          statusAlert.className = 'alert alert-danger mb-4';
+          statusAlert.innerHTML = `<span>❌ ${result.message || '获取选科状态失败'}</span>`;
         }
+      } catch (error) {
+        console.error('获取选科状态错误:', error);
+        statusAlert.className = 'alert alert-danger mb-4';
+        statusAlert.innerHTML = `<span>❌ 网络错误，请刷新重试</span>`;
       }
     }
 
     // 加载科目
     async function loadSubjects() {
-      const result = await api.subjects.getAll({ active: true });
+      const phGrid = document.getElementById('physicsHistoryGrid');
+      const elGrid = document.getElementById('electivesGrid');
 
-      if (result.code === 200) {
-        subjects = result.data;
-        renderSubjects();
+      try {
+        console.log('开始加载学科数据...');
+        const result = await api.subjects.getAll({ active: true });
+        console.log('学科API响应:', result);
+
+        if (result.code === 200) {
+          subjects = result.data || [];
+          console.log('学科数据:', subjects);
+
+          if (subjects.length === 0) {
+            phGrid.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">暂无科目数据，请联系管理员添加</div>';
+            elGrid.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">暂无科目数据，请联系管理员添加</div>';
+          } else {
+            renderSubjects();
+          }
+        } else {
+          console.error('加载学科失败:', result.message);
+          phGrid.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger);">加载失败: ${result.message || '未知错误'}</div>`;
+          elGrid.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger);">加载失败: ${result.message || '未知错误'}</div>`;
+        }
+      } catch (error) {
+        console.error('加载学科异常:', error);
+        phGrid.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger);">网络错误，请刷新重试</div>';
+        elGrid.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger);">网络错误，请刷新重试</div>';
       }
     }
 

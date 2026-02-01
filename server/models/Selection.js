@@ -16,6 +16,12 @@ const Selection = sequelize.define('Selection', {
     allowNull: false,
     comment: '用户ID'
   },
+  projectId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'project_id',
+    comment: '项目ID（租户隔离）'
+  },
   physicsOrHistory: {
     type: DataTypes.INTEGER,
     allowNull: true,

@@ -1,67 +1,65 @@
 const express = require('express');
 const router = express.Router();
-const XLSX = require('xlsx');
-const { User, Selection, Subject, SystemConfig } = require('../models');
-const { success, error } = require('../utils/response');
+const { Project, User, Subject, Selection } = require('../models');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { success, error } = require('../utils/response');
+
 
 /**
- * 获取所有配置
- * GET /api/admin/config
+ * 获取概览统计数据
+ * GET /api/admin/overview
  */
-router.get('/config', authenticate, requireAdmin, async (req, res) => {
+router.get('/overview', authenticate, requireAdmin, async (req, res) => {
   try {
-    const configs = await SystemConfig.findAll();
-    success(res, configs);
+    const projectId = req.user.projectId;
+
+    const totalStudents = await User.count({ where: { role: 'student', projectId } });
+    const selectedCount = await Selection.count({ where: { projectId, status: 'submitted' } });
+    const notSelectedCount = totalStudents - selectedCount;
+    const totalSubjects = await Subject.count({ where: { projectId } });
+
+    success(res, {
+      totalStudents,
+      selectedCount,
+      notSelectedCount,
+      totalSubjects
+    });
   } catch (err) {
-    console.error('获取配置错误:', err);
-    error(res, '获取配置失败', 500);
+    console.error('获取概览失败:', err);
+    error(res, '获取概览失败', 500);
   }
 });
 
 /**
- * 更新配置
- * PUT /api/admin/config
- */
-router.put('/config', authenticate, requireAdmin, async (req, res) => {
-  try {
-    const { key, value, description } = req.body;
-
-    if (!key) {
-      return error(res, '配置键不能为空');
-    }
-
-    const config = await SystemConfig.setValue(key, value, description);
-    success(res, config, '配置更新成功');
-  } catch (err) {
-    console.error('更新配置错误:', err);
-    error(res, '更新配置失败', 500);
-  }
-});
-
-/**
- * 批量设置选科时间
+ * 更新项目选科时间设置
  * PUT /api/admin/selection-time
  */
 router.put('/selection-time', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { startTime, endTime } = req.body;
+    const { selectionStartTime, selectionEndTime } = req.body;
+    const projectId = req.user.projectId;
 
-    if (!startTime || !endTime) {
-      return error(res, '请设置开始时间和结束时间');
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return error(res, '项目不存在');
     }
 
-    if (new Date(startTime) >= new Date(endTime)) {
-      return error(res, '开始时间必须早于结束时间');
+    // 验证：结束时间必须晚于开始时间
+    if (selectionStartTime && selectionEndTime) {
+      if (new Date(selectionEndTime) <= new Date(selectionStartTime)) {
+        return error(res, '结束时间必须晚于开始时间');
+      }
     }
 
-    await SystemConfig.setValue('selection_start_time', startTime, '选科开始时间');
-    await SystemConfig.setValue('selection_end_time', endTime, '选科结束时间');
+    await project.update({
+      selectionStartTime: selectionStartTime || null,
+      selectionEndTime: selectionEndTime || null
+    });
 
-    success(res, { startTime, endTime }, '选科时间设置成功');
+    success(res, null, '时间设置已更新');
   } catch (err) {
-    console.error('设置选科时间错误:', err);
-    error(res, '设置选科时间失败', 500);
+    console.error('更新选科时间错误:', err);
+    error(res, '更新失败', 500);
   }
 });
 
@@ -72,8 +70,9 @@ router.put('/selection-time', authenticate, requireAdmin, async (req, res) => {
 router.get('/students', authenticate, requireAdmin, async (req, res) => {
   try {
     const { className, page = 1, limit = 20 } = req.query;
+    const projectId = req.user.projectId;
 
-    const where = { role: 'student' };
+    const where = { role: 'student', projectId };
     if (className) where.className = className;
 
     const offset = (page - 1) * limit;
@@ -95,132 +94,17 @@ router.get('/students', authenticate, requireAdmin, async (req, res) => {
     });
 
     success(res, {
+      data: rows,
       total: count,
       page: parseInt(page),
-      limit: parseInt(limit),
-      data: rows
+      limit: parseInt(limit)
     });
   } catch (err) {
-    console.error('获取学生列表错误:', err);
+    console.error('获取学生列表失败:', err);
     error(res, '获取学生列表失败', 500);
   }
 });
 
-/**
- * 导出选科数据为Excel
- * GET /api/admin/export
- */
-router.get('/export', authenticate, requireAdmin, async (req, res) => {
-  try {
-    const selections = await Selection.findAll({
-      where: { status: ['submitted', 'confirmed'] },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['studentId', 'name', 'className']
-        },
-        { model: Subject, as: 'physicsHistorySubject' },
-        { model: Subject, as: 'electiveOneSubject' },
-        { model: Subject, as: 'electiveTwoSubject' }
-      ],
-      order: [[{ model: User, as: 'user' }, 'className', 'ASC']]
-    });
-
-    // 构建Excel数据
-    const data = selections.map(s => ({
-      '学号': s.user?.studentId || '',
-      '姓名': s.user?.name || '',
-      '班级': s.user?.className || '',
-      '物理/历史': s.physicsHistorySubject?.name || '',
-      '选科1': s.electiveOneSubject?.name || '',
-      '选科2': s.electiveTwoSubject?.name || '',
-      '状态': s.status === 'submitted' ? '已提交' : s.status === 'confirmed' ? '已确认' : s.status,
-      '提交时间': s.submittedAt ? new Date(s.submittedAt).toLocaleString('zh-CN') : ''
-    }));
-
-    // 创建工作簿
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(data);
-
-    // 设置列宽
-    ws['!cols'] = [
-      { wch: 12 }, // 学号
-      { wch: 10 }, // 姓名
-      { wch: 12 }, // 班级
-      { wch: 8 },  // 物理/历史
-      { wch: 8 },  // 选科1
-      { wch: 8 },  // 选科2
-      { wch: 8 },  // 状态
-      { wch: 20 }  // 提交时间
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, '选科结果');
-
-    // 生成Buffer
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-    // 设置响应头
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=selection_${Date.now()}.xlsx`);
-    res.send(buffer);
-  } catch (err) {
-    console.error('导出Excel错误:', err);
-    error(res, '导出失败', 500);
-  }
-});
-
-/**
- * 批量导入学生（管理员）
- * POST /api/admin/import-students
- */
-router.post('/import-students', authenticate, requireAdmin, async (req, res) => {
-  try {
-    const { students } = req.body;
-
-    if (!Array.isArray(students) || students.length === 0) {
-      return error(res, '请提供学生数据');
-    }
-
-    const results = { success: 0, failed: 0, errors: [] };
-
-    for (const student of students) {
-      try {
-        const { studentId, name, className, password = '123456' } = student;
-
-        if (!studentId || !name) {
-          results.failed++;
-          results.errors.push(`缺少必要字段: ${JSON.stringify(student)}`);
-          continue;
-        }
-
-        const existing = await User.findOne({ where: { studentId } });
-        if (existing) {
-          results.failed++;
-          results.errors.push(`学号已存在: ${studentId}`);
-          continue;
-        }
-
-        await User.create({
-          studentId,
-          name,
-          className,
-          password,
-          role: 'student'
-        });
-        results.success++;
-      } catch (e) {
-        results.failed++;
-        results.errors.push(e.message);
-      }
-    }
-
-    success(res, results, `导入完成：成功 ${results.success} 人，失败 ${results.failed} 人`);
-  } catch (err) {
-    console.error('导入学生错误:', err);
-    error(res, '导入失败', 500);
-  }
-});
 
 /**
  * 添加学生
@@ -229,31 +113,34 @@ router.post('/import-students', authenticate, requireAdmin, async (req, res) => 
 router.post('/students', authenticate, requireAdmin, async (req, res) => {
   try {
     const { studentId, name, className, password } = req.body;
+    const projectId = req.user.projectId;
 
     if (!studentId || !name) {
       return error(res, '学号和姓名不能为空');
     }
 
     // 检查学号是否已存在
-    const exists = await User.findOne({ where: { studentId } });
-    if (exists) {
-      return error(res, '学号已存在');
+    const existing = await User.findOne({ where: { studentId, projectId } });
+    if (existing) {
+      return error(res, '该学号已存在');
     }
 
-    const user = await User.create({
+    const student = await User.create({
       studentId,
       name,
-      className: className || null,
-      password: password || studentId, // 默认密码为学号
-      role: 'student'
+      className,
+      password: password || studentId,
+      role: 'student',
+      projectId
     });
 
-    success(res, user, '学生添加成功');
+    success(res, student.toSafeObject(), '学生添加成功');
   } catch (err) {
-    console.error('添加学生错误:', err);
+    console.error('添加学生失败:', err);
     error(res, '添加学生失败', 500);
   }
 });
+
 
 /**
  * 更新学生信息
@@ -263,29 +150,37 @@ router.put('/students/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { studentId, name, className } = req.body;
+    const projectId = req.user.projectId;
 
-    const user = await User.findByPk(id);
-    if (!user || user.role !== 'student') {
-      return error(res, '学生不存在', 404);
+    const student = await User.findOne({ where: { id, projectId, role: 'student' } });
+    if (!student) {
+      return error(res, '学生不存在');
     }
 
     // 如果修改学号，检查新学号是否已存在
-    if (studentId && studentId !== user.studentId) {
-      const exists = await User.findOne({ where: { studentId } });
-      if (exists) {
-        return error(res, '学号已存在');
+    if (studentId && studentId !== student.studentId) {
+      const { Op } = require('sequelize');
+      const existing = await User.findOne({ 
+        where: { 
+          studentId, 
+          projectId,
+          id: { [Op.ne]: id }
+        }
+      });
+      if (existing) {
+        return error(res, '该学号已存在');
       }
     }
 
-    await user.update({
-      studentId: studentId || user.studentId,
-      name: name || user.name,
-      className: className !== undefined ? className : user.className
+    await student.update({
+      studentId: studentId || student.studentId,
+      name: name || student.name,
+      className: className !== undefined ? className : student.className
     });
 
-    success(res, user, '学生信息更新成功');
+    success(res, student.toSafeObject(), '学生信息更新成功');
   } catch (err) {
-    console.error('更新学生错误:', err);
+    console.error('更新学生失败:', err);
     error(res, '更新学生失败', 500);
   }
 });
@@ -297,43 +192,67 @@ router.put('/students/:id', authenticate, requireAdmin, async (req, res) => {
 router.delete('/students/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const projectId = req.user.projectId;
 
-    const user = await User.findByPk(id);
-    if (!user || user.role !== 'student') {
-      return error(res, '学生不存在', 404);
+    const student = await User.findOne({ where: { id, projectId, role: 'student' } });
+    if (!student) {
+      return error(res, '学生不存在');
     }
 
-    // 同时删除该学生的选科记录
     await Selection.destroy({ where: { userId: id } });
-    await user.destroy();
+    await student.destroy();
 
     success(res, null, '学生删除成功');
   } catch (err) {
-    console.error('删除学生错误:', err);
+    console.error('删除学生失败:', err);
     error(res, '删除学生失败', 500);
   }
 });
 
 /**
- * 重置学生密码
- * POST /api/admin/students/:id/reset-password
+ * 获取注册控制状态
+ * GET /api/admin/registration-status
  */
-router.post('/students/:id/reset-password', authenticate, requireAdmin, async (req, res) => {
+router.get('/registration-status', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const projectId = req.user.projectId;
+    const project = await Project.findByPk(projectId);
 
-    const user = await User.findByPk(id);
-    if (!user || user.role !== 'student') {
-      return error(res, '学生不存在', 404);
+    if (!project) {
+      return error(res, '项目不存在');
     }
 
-    // 重置密码为学号
-    await user.update({ password: user.studentId });
-
-    success(res, null, `密码已重置为：${user.studentId}`);
+    success(res, {
+      registrationEnabled: project.registrationEnabled
+    });
   } catch (err) {
-    console.error('重置密码错误:', err);
-    error(res, '重置密码失败', 500);
+    console.error('获取注册状态失败:', err);
+    error(res, '获取注册状态失败', 500);
+  }
+});
+
+/**
+ * 设置注册控制
+ * PUT /api/admin/registration-control
+ */
+router.put('/registration-control', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const projectId = req.user.projectId;
+
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return error(res, '项目不存在');
+    }
+
+    await project.update({
+      registrationEnabled: enabled
+    });
+
+    success(res, null, enabled ? '已开启学生注册' : '已关闭学生注册');
+  } catch (err) {
+    console.error('设置注册控制失败:', err);
+    error(res, '设置注册控制失败', 500);
   }
 });
 

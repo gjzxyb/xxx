@@ -124,4 +124,31 @@ router.put('/password', authenticate, async (req, res) => {
   }
 });
 
+
+/**
+ * 公开API: 获取当前项目的注册状态
+ * GET /api/auth/registration-status
+ * 不需要认证
+ */
+router.get('/registration-status', async (req, res) => {
+  try {
+    const { Project } = require('../models');
+    
+    // 获取第一个项目（假设单项目系统）
+    const project = await Project.findOne();
+    
+    if (!project) {
+      // 如果没有项目，默认允许注册
+      return success(res, { registrationEnabled: true });
+    }
+    
+    success(res, {
+      registrationEnabled: project.registrationEnabled !== false
+    });
+  } catch (err) {
+    console.error('获取注册状态错误:', err);
+    // 发生错误时，为了安全起见，默认允许注册
+    success(res, { registrationEnabled: true });
+  }
+});
 module.exports = router;

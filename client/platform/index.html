@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分科自选 SaaS 平台</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .hero {
+      text-align: center;
+      padding: 6rem 2rem;
+    }
+    .hero-title {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      margin-bottom: 3rem;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin: 4rem 0;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      padding: 2rem;
+      border-radius: var(--radius);
+      text-align: center;
+    }
+    .feature-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <nav class="navbar">
+      <div class="container navbar-content">
+        <div class="navbar-brand">
+          <span>🎓</span>
+          <span>分科自选 SaaS 平台</span>
+        </div>
+        <div class="navbar-nav">
+          <a href="login.html" class="btn btn-primary">登录</a>
+          <a href="register.html" class="btn btn-success">注册</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <div class="container">
+        <div class="hero">
+          <h1 class="hero-title">分科自选 SaaS 平台</h1>
+          <p class="hero-subtitle">为每所学校提供独立的分科自选系统</p>
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="register.html" class="btn btn-lg btn-success">免费注册</a>
+            <a href="login.html" class="btn btn-lg btn-outline">立即登录</a>
+          </div>
+        </div>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🏫</div>
+            <h3>独立数据</h3>
+            <p style="color: var(--text-secondary);">每个项目拥有独立数据库，数据完全隔离，保障安全</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">👥</div>
+            <h3>协作管理</h3>
+            <p style="color: var(--text-secondary);">支持邀请协作者共同管理项目，团队协作更高效</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>快速创建</h3>
+            <p style="color: var(--text-secondary);">一键创建项目，立即开始使用完整的分科自选系统</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>数据分析</h3>
+            <p style="color: var(--text-secondary);">完善的统计分析功能，选科数据一目了然</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>安全可靠</h3>
+            <p style="color: var(--text-secondary);">JWT认证、数据加密，确保系统安全稳定</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">💎</div>
+            <h3>灵活定制</h3>
+            <p style="color: var(--text-secondary);">超级管理员后台，灵活配置用户权限和限额</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

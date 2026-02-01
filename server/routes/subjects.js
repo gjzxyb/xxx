@@ -7,12 +7,14 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 /**
  * 获取所有科目
  * GET /api/subjects
+ * 使用认证中间件，根据projectId过滤
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const { category, active } = req.query;
+    const projectId = req.user.projectId;
 
-    const where = {};
+    const where = { projectId };
     if (category) where.category = category;
     if (active !== undefined) where.isActive = active === 'true';
 
@@ -52,6 +54,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
     const { name, category, description, maxCapacity } = req.body;
+    const projectId = req.user.projectId;
 
     if (!name || !category) {
       return error(res, '请填写科目名称和分类');
@@ -61,16 +64,17 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       return error(res, '无效的科目分类');
     }
 
-    const existing = await Subject.findOne({ where: { name } });
+    const existing = await Subject.findOne({ where: { name, projectId } });
     if (existing) {
-      return error(res, '科目已存在');
+      return error(res, '该科目已存在');
     }
 
     const subject = await Subject.create({
       name,
       category,
       description,
-      maxCapacity: maxCapacity || 0
+      maxCapacity: maxCapacity || 0,
+      projectId
     });
 
     success(res, subject, '科目创建成功');
