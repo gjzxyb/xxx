@@ -135,7 +135,7 @@
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
       e.preventDefault();
       clearToken();
-      window.location.href = '/';
+      window.location.href = projectId ? `/?projectId=${projectId}` : '/';
     });
 
     // 加载选科状态
