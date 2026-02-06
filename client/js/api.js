@@ -56,8 +56,19 @@ async function request(url, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // 自动从 URL 获取 projectId 并添加到请求中
+  const urlParams = new URLSearchParams(window.location.search);
+  const projectId = urlParams.get('projectId');
+
+  // 如果URL中有projectId，自动添加到API请求中
+  let finalUrl = url;
+  if (projectId && !url.includes('projectId=')) {
+    const separator = url.includes('?') ? '&' : '?';
+    finalUrl = `${url}${separator}projectId=${projectId}`;
+  }
+
   try {
-    const response = await fetch(API_BASE + url, {
+    const response = await fetch(API_BASE + finalUrl, {
       ...options,
       headers
     });
@@ -85,9 +96,9 @@ async function request(url, options = {}) {
 const api = {
   // 认证相关
   auth: {
-    login: (studentId, password) => request('/auth/login', {
+    login: (studentId, password, projectId) => request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ studentId, password })
+      body: JSON.stringify({ studentId, password, projectId })
     }),
 
     register: (data) => request('/auth/register', {
@@ -147,7 +158,9 @@ const api = {
       return request('/selections' + (query ? '?' + query : ''));
     },
 
-    getStats: () => request('/selections/stats')
+    getStats: () => request('/selections/stats'),
+
+    getCombinations: () => request('/selections/combinations')
   },
 
   // 管理员相关
@@ -172,6 +185,24 @@ const api = {
     importStudents: (students) => request('/admin/import-students', {
       method: 'POST',
       body: JSON.stringify({ students })
+    }),
+
+    createStudent: (data) => request('/admin/students', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+    updateStudent: (id, data) => request(`/admin/students/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+    deleteStudent: (id) => request(`/admin/students/${id}`, {
+      method: 'DELETE'
+    }),
+
+    resetPassword: (id) => request(`/admin/students/${id}/reset-password`, {
+      method: 'POST'
     }),
 
     exportUrl: () => API_BASE + '/admin/export?token=' + getToken()

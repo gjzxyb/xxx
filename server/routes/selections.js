@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Selection, Subject, User, SystemConfig, Project } = require('../models');
+const { Project } = require('../models'); // 只需要平台级的 Project 模型
 const { success, error, notFound } = require('../utils/response');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
+const { projectDb, optionalProjectDb } = require('../middleware/projectDb');
 
 /**
  * 检查选科时间是否开放（基于项目配置）
@@ -38,9 +39,9 @@ const checkSelectionTime = async (projectId) => {
  * 获取选科状态（时间是否开放）
  * GET /api/selections/status
  */
-router.get('/status', authenticate, async (req, res) => {
+router.get('/status', projectDb, authenticateProject, async (req, res) => {
   try {
-    const projectId = req.user.projectId;
+    const projectId = req.projectId;
 
     const project = await Project.findByPk(projectId);
     if (!project) {
@@ -61,24 +62,47 @@ router.get('/status', authenticate, async (req, res) => {
 });
 
 /**
- * 获取我的选科
+ * 获取我的选科（学生）
  * GET /api/selections/my
  */
-router.get('/my', authenticate, async (req, res) => {
+router.get('/my', projectDb, authenticateProject, async (req, res) => {
   try {
-    const selection = await Selection.findOne({
-      where: { userId: req.userId },
+    const { Selection, Subject, User } = req.projectModels;
+    const userId = req.user.id;
+
+    let selection = await Selection.findOne({
+      where: { userId },
       include: [
-        { model: Subject, as: 'physicsHistorySubject' },
-        { model: Subject, as: 'electiveOneSubject' },
-        { model: Subject, as: 'electiveTwoSubject' }
+        {
+          model: Subject,
+          as: 'physicsHistorySubject',
+          attributes: ['id', 'name', 'category']
+        },
+        {
+          model: Subject,
+          as: 'electiveOneSubject',
+          attributes: ['id', 'name', 'category']
+        },
+        {
+          model: Subject,
+          as: 'electiveTwoSubject',
+          attributes: ['id', 'name', 'category']
+        }
       ]
     });
 
+    if (!selection) {
+      // 如果没有选科记录，创建一个草稿
+      selection = await Selection.create({
+        userId,
+        status: 'draft'
+      });
+    }
+
     success(res, selection);
   } catch (err) {
-    console.error('获取选科错误:', err);
-    error(res, '获取选科信息失败', 500);
+    console.error('获取我的选科错误:', err);
+    error(res, '获取我的选科失败', 500);
   }
 });
 
@@ -86,10 +110,10 @@ router.get('/my', authenticate, async (req, res) => {
  * 提交/更新选科
  * POST /api/selections
  */
-router.post('/', authenticate, async (req, res) => {
+router.post('/', projectDb, authenticateProject, async (req, res) => {
   try {
     // 检查时间
-    const projectId = req.user.projectId;
+    const projectId = req.projectId;
     const timeStatus = await checkSelectionTime(projectId);
     if (!timeStatus.open) {
       return error(res, timeStatus.message);
@@ -109,6 +133,7 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     // 验证科目存在性和分类
+    const { Subject, Selection } = req.projectModels;
     const phSubject = await Subject.findByPk(physicsOrHistory);
     if (!phSubject || phSubject.category !== 'physics_history') {
       return error(res, '物理/历史科目选择无效');
@@ -188,9 +213,10 @@ router.post('/', authenticate, async (req, res) => {
  * 取消选科
  * DELETE /api/selections/my
  */
-router.delete('/my', authenticate, async (req, res) => {
+router.delete('/my', projectDb, authenticateProject, async (req, res) => {
   try {
-    const projectId = req.user.projectId;
+    const projectId = req.projectId;
+    const { Selection } = req.projectModels;
     const timeStatus = await checkSelectionTime(projectId);
     if (!timeStatus.open) {
       return error(res, timeStatus.message);
@@ -215,8 +241,9 @@ router.delete('/my', authenticate, async (req, res) => {
  * 获取所有选科记录（管理员）
  * GET /api/selections
  */
-router.get('/', authenticate, requireAdmin, async (req, res) => {
+router.get('/', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
+    const { User, Subject, Selection } = req.projectModels;
     const { status, className, page = 1, limit = 20 } = req.query;
 
     const where = {};
@@ -262,7 +289,7 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
  * 导出选科列表为Excel（管理员）
  * GET /api/selections/export
  */
-router.get('/export', authenticate, requireAdmin, async (req, res) => {
+router.get('/export', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
     const { status, className } = req.query;
     const XLSX = require('xlsx');
@@ -328,8 +355,33 @@ router.get('/export', authenticate, requireAdmin, async (req, res) => {
  * 选科统计（管理员）
  * GET /api/selections/stats
  */
-router.get('/stats', authenticate, requireAdmin, async (req, res) => {
+router.get('/stats', projectDb, async (req, res) => {
   try {
+    // 手动验证token和管理员权限（因为需要在项目数据库中验证）
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ code: 401, message: '请先登录' });
+    }
+
+    const token = authHeader.substring(7);
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'student-selection-secret-key-2024';
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ code: 401, message: '无效的认证信息' });
+    }
+
+    const { User, Subject, Selection } = req.projectModels;
+
+    // 在项目数据库中查找用户
+    const user = await User.findByPk(decoded.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ code: 403, message: '无权访问' });
+    }
+
     const subjects = await Subject.findAll();
     const stats = [];
 
@@ -378,8 +430,9 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
  * 导出选科组合统计为Excel（管理员）
  * GET /api/selections/combinations/export
  */
-router.get('/combinations/export', authenticate, requireAdmin, async (req, res) => {
+router.get('/combinations/export', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
+    const { User, Subject, Selection } = req.projectModels;
     const { Op } = require('sequelize');
     const XLSX = require('xlsx');
 
@@ -498,8 +551,9 @@ router.get('/combinations/export', authenticate, requireAdmin, async (req, res) 
  * 选科组合统计（管理员）
  * GET /api/selections/combinations
  */
-router.get('/combinations', authenticate, requireAdmin, async (req, res) => {
+router.get('/combinations', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
+    const { Subject, Selection } = req.projectModels;
     const { Op } = require('sequelize');
 
     // 获取所有有效选科记录
@@ -567,3 +621,4 @@ router.get('/combinations', authenticate, requireAdmin, async (req, res) => {
 });
 
 module.exports = router;
+

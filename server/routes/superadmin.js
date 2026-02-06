@@ -167,6 +167,62 @@ router.put('/users/:userId/status', authenticatePlatform, requireSuperAdmin, asy
 });
 
 /**
+ * 编辑用户信息
+ * PUT /api/platform/superadmin/users/:userId
+ */
+router.put('/users/:userId', authenticatePlatform, requireSuperAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { email, name, maxProjects, password } = req.body;
+
+    const user = await PlatformUser.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+
+    // 不允许修改超级管理员的邮箱和姓名（除非是自己）
+    if (user.isSuperAdmin && user.id !== req.user.id) {
+      return res.status(403).json({ code: 403, message: '不能修改其他超级管理员的信息' });
+    }
+
+    // 检查邮箱是否已被其他用户使用
+    if (email && email !== user.email) {
+      const { Op } = require('sequelize');
+      const existingUser = await PlatformUser.findOne({
+        where: {
+          email,
+          id: { [Op.ne]: userId }
+        }
+      });
+      if (existingUser) {
+        return res.status(400).json({ code: 400, message: '该邮箱已被使用' });
+      }
+    }
+
+    // 准备更新数据
+    const updateData = {};
+    if (email) updateData.email = email;
+    if (name) updateData.name = name;
+    if (maxProjects !== undefined) updateData.maxProjects = parseInt(maxProjects);
+    if (password && password.trim()) {
+      // 如果提供了密码，则更新密码
+      updateData.password = password;
+    }
+
+    await user.update(updateData);
+
+    res.json({
+      code: 200,
+      message: '用户信息已更新'
+    });
+  } catch (error) {
+    console.error('编辑用户错误:', error);
+    res.status(500).json({ code: 500, message: '编辑用户失败' });
+  }
+});
+
+
+/**
  * 更新用户项目限制
  * PUT /api/platform/superadmin/users/:userId/projects
  */
@@ -235,7 +291,10 @@ router.delete('/users/:userId', authenticatePlatform, requireSuperAdmin, async (
 
     res.json({
       code: 200,
-      message: '用户已删除'
+      message: '用户已删除',
+      data: {
+        deletedProjects: projects.length
+      }
     });
   } catch (error) {
     console.error('删除用户错误:', error);

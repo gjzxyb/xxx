@@ -39,11 +39,15 @@ app.use(express.static(path.join(__dirname, '../client')));
 // 平台管理前端（从 platform/client 迁移）
 app.use('/platform', express.static(path.join(__dirname, '../client/platform')));
 
+// 导入项目数据库中间件
+const { projectDb } = require('./middleware/projectDb');
+
 // API路由 - 选科系统
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectsRoutes);
 app.use('/api/selections', selectionsRoutes);
-app.use('/api/admin', adminRoutes);
+// 为所有管理员路由自动添加 projectDb 中间件
+app.use('/api/admin', projectDb, adminRoutes);
 
 // API路由 - 平台管理
 app.use('/api/platform/auth', platformAuthRoutes);

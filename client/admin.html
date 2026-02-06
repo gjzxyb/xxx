@@ -368,15 +368,110 @@
     </div>
   </div>
 
+  <!-- Custom Confirm Dialog -->
+  <div class="modal-overlay" id="confirmDialog">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">⚠️ 确认操作</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin: 1.5rem 0; color: var(--text-primary);"></p>
+      </div>
+      <div class="flex justify-between" style="gap: 1rem;">
+        <button type="button" class="btn btn-secondary" style="flex: 1;" id="confirmCancel">取消</button>
+        <button type="button" class="btn btn-danger" style="flex: 1;" id="confirmOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
   <script src="js/api.js"></script>
   <script>
-    // 检查登录和权限
-    if (!isLoggedIn()) {
-      window.location.href = '/';
+    // Custom Confirm Dialog
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('confirmDialog');
+        const messageEl = document.getElementById('confirmMessage');
+        const okBtn = document.getElementById('confirmOk');
+        const cancelBtn = document.getElementById('confirmCancel');
+
+        messageEl.textContent = message;
+        dialog.classList.add('active');
+
+        function cleanup() {
+          dialog.classList.remove('active');
+          okBtn.removeEventListener('click', handleOk);
+          cancelBtn.removeEventListener('click', handleCancel);
+        }
+
+        function handleOk() {
+          cleanup();
+          resolve(true);
+        }
+
+        function handleCancel() {
+          cleanup();
+          resolve(false);
+        }
+
+        okBtn.addEventListener('click', handleOk);
+        cancelBtn.addEventListener('click', handleCancel);
+      });
     }
+
+    // Override confirm to use custom dialog
+    window.confirm = showConfirm;
+
+    // Toast utility function
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className =`toast toast-${type}`;
+
+      const icons = {
+        success: '✓',
+        error: '✗',
+        warning: '⚠',
+        info: 'ℹ'
+      };
+
+      toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+      `;
+
+      container.appendChild(toast);
+
+      // Auto remove after 3 seconds
+      setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Override alert to use toast
+    window.alert = function(message) {
+      showToast(message, 'info');
+    };
+
+    // 检查登录和权限
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('projectId');
+
+    if (!isLoggedIn()) {
+      window.location.href = projectId ? `/?projectId=${projectId}` : '/';
+    }
+
+    if (!projectId) {
+      alert('缺少项目信息，请通过正确的方式访问');
+      window.location.href = '/platform/dashboard.html';
+    }
+
     const user = getCurrentUser();
     if (!user || user.role !== 'admin') {
-      window.location.href = '/dashboard.html';
+      window.location.href = `/dashboard.html?projectId=${projectId}`;
     }
     document.getElementById('adminName').textContent = user.name;
 
@@ -384,7 +479,7 @@
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
       e.preventDefault();
       clearToken();
-      window.location.href = '/';
+      window.location.href = projectId ? `/?projectId=${projectId}` : '/';
     });
 
     // 标签切换
@@ -426,12 +521,9 @@
     // 加载并初始化注册开关
     async function loadRegistrationStatus() {
       try {
-        const response = await fetch('/api/admin/registration-setting', {
-          headers: { 'Authorization': 'Bearer ' + getToken() }
-        });
-        const result = await response.json();
+        const result = await request('/admin/registration-setting');
 
-        if (result.code === 200) {
+        if (result && result.code === 200) {
           const toggle = document.getElementById('registrationToggle');
           toggle.checked = result.data.registrationEnabled !== false;
         }
@@ -445,21 +537,15 @@
       const enabled = e.target.checked;
 
       try {
-        const response = await fetch('/api/admin/registration-setting', {
+        const result = await request('/admin/registration-setting', {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + getToken()
-          },
           body: JSON.stringify({ enabled })
         });
 
-        const result = await response.json();
-
-        if (result.code === 200) {
+        if (result && result.code === 200) {
           alert(result.message);
         } else {
-          alert(result.message || '更新失败');
+          alert(result?.message || '更新失败');
           e.target.checked = !enabled;
         }
       } catch (error) {
@@ -695,24 +781,10 @@
         let result;
         if (editId) {
           // 编辑学生
-          result = await fetch(`/api/admin/students/${editId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + getToken()
-            },
-            body: JSON.stringify({ studentId, name, className })
-          }).then(r => r.json());
+          result = await api.admin.updateStudent(editId, { studentId, name, className });
         } else {
           // 添加学生
-          result = await fetch('/api/admin/students', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + getToken()
-            },
-            body: JSON.stringify({ studentId, name, className, password })
-          }).then(r => r.json());
+          result = await api.admin.createStudent({ studentId, name, className, password });
         }
 
         if (result.code === 200) {
@@ -747,11 +819,7 @@
       }
 
       try {
-        const response = await fetch(`/api/admin/students/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + getToken() }
-        });
-        const result = await response.json();
+        const result = await api.admin.deleteStudent(id);
 
         if (result.code === 200) {
           alert('学生删除成功');
@@ -771,11 +839,7 @@
       }
 
       try {
-        const response = await fetch(`/api/admin/students/${id}/reset-password`, {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + getToken() }
-        });
-        const result = await response.json();
+        const result = await api.admin.resetPassword(id);
 
         if (result.code === 200) {
           alert(result.message || '密码重置成功');
@@ -815,10 +879,7 @@
     async function loadSelectionsCombinationFilter() {
       if (selectionsCombinationsLoaded) return;
       try {
-        const response = await fetch('/api/selections/combinations', {
-          headers: { 'Authorization': 'Bearer ' + getToken() }
-        });
-        const result = await response.json();
+        const result = await api.selections.getCombinations();
         if (result.code === 200) {
           const combinations = result.data.combinations.map(c => c.combination);
           combinations.sort();
@@ -922,7 +983,8 @@
     document.getElementById('exportSelectionsBtn').addEventListener('click', (e) => {
       e.preventDefault();
       const classFilter = document.getElementById('selectionsClassFilter').value;
-      let url = '/api/selections/export?token=' + getToken();
+      const projectId = new URLSearchParams(window.location.search).get('projectId');
+      let url = '/api/selections/export?token=' + getToken() + '&projectId=' + projectId;
       if (classFilter) url += '&className=' + encodeURIComponent(classFilter);
       window.open(url, '_blank');
     });
@@ -932,10 +994,7 @@
       const container = document.getElementById('combinationStats');
 
       try {
-        const response = await fetch('/api/selections/combinations', {
-          headers: { 'Authorization': 'Bearer ' + getToken() }
-        });
-        const result = await response.json();
+        const result = await api.selections.getCombinations();
 
         if (result.code === 200) {
           const { total, physicsCount, historyCount, combinationCount, combinations } = result.data;
@@ -1024,7 +1083,8 @@
     // 导出组合统计
     document.getElementById('exportCombinationsBtn').addEventListener('click', (e) => {
       e.preventDefault();
-      window.open('/api/selections/combinations/export?token=' + getToken(), '_blank');
+      const projectId = new URLSearchParams(window.location.search).get('projectId');
+      window.open('/api/selections/combinations/export?token=' + getToken() + '&projectId=' + projectId, '_blank');
     });
 
     // ============ 学生导入功能 ============

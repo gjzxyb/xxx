@@ -10,7 +10,6 @@ const User = sequelize.define('User', {
   },
   studentId: {
     type: DataTypes.STRING(20),
-    unique: true,
     allowNull: false,
     comment: '学号'
   },
@@ -47,6 +46,13 @@ const User = sequelize.define('User', {
   }
 }, {
   tableName: 'users',
+  indexes: [
+    {
+      unique: true,
+      fields: ['studentId', 'project_id'],
+      name: 'unique_student_per_project'
+    }
+  ],
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {

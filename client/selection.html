@@ -109,11 +109,29 @@
       document.getElementById('userName').textContent = user.name;
     }
 
+    // 获取并验证 projectId
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('projectId');
+
+    if (projectId) {
+      // 更新导航链接
+      document.querySelectorAll('a[href^="/dashboard.html"], a[href^="/selection.html"]').forEach(link => {
+        const url = new URL(link.href, window.location.origin);
+        url.searchParams.set('projectId', projectId);
+        link.href = url.toString();
+      });
+    } else {
+      // 缺少 projectId，尝试从 localStorage 获取（如果在同一个会话中）
+      // 这里简单重定向回平台首页让用户重新进入
+      alert('缺少项目信息，请重新进入系统');
+      window.location.href = '/platform/dashboard.html';
+    }
+
     // 退出登录
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
       e.preventDefault();
       clearToken();
-      window.location.href = '/';
+      window.location.href = projectId ? `/?projectId=${projectId}` : '/';
     });
 
     let selectionOpen = false;
@@ -352,7 +370,7 @@
 
       if (result.code === 200) {
         alert('选科提交成功！');
-        window.location.href = '/dashboard.html';
+        window.location.href = `/dashboard.html?projectId=${projectId}`;
       } else {
         alert(result.message);
         btn.disabled = false;

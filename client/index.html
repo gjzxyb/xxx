@@ -83,10 +83,19 @@
     // 检查是否已登录
     if (isLoggedIn()) {
       const user = getCurrentUser();
-      if (user && user.role === 'admin') {
-        window.location.href = '/admin.html';
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectId = urlParams.get('projectId');
+
+      if (projectId) {
+        // 如果URL中有projectId，重定向时保留它
+        if (user && user.role === 'admin') {
+          window.location.href = `/admin.html?projectId=${projectId}`;
+        } else {
+          window.location.href = `/dashboard.html?projectId=${projectId}`;
+        }
       } else {
-        window.location.href = '/dashboard.html';
+        // 如果没有projectId，重定向到平台首页让用户选择项目
+        window.location.href = '/platform/dashboard.html';
       }
     }
 
@@ -152,20 +161,30 @@
         return;
       }
 
+      // 获取 projectId (从 URL 参数)
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectId = urlParams.get('projectId');
+
+      if (!projectId) {
+        showAlert('缺少项目信息，请通过正确的链接访问');
+        return;
+      }
+
       const btn = loginForm.querySelector('button');
       btn.disabled = true;
       btn.textContent = '登录中...';
 
-      const result = await api.auth.login(studentId, password);
+      const result = await api.auth.login(studentId, password, projectId);
 
       if (result.code === 200) {
         setToken(result.data.token);
         setCurrentUser(result.data.user);
 
+        // 跳转时保留 projectId 参数
         if (result.data.user.role === 'admin') {
-          window.location.href = '/admin.html';
+          window.location.href = `/admin.html?projectId=${projectId}`;
         } else {
-          window.location.href = '/dashboard.html';
+          window.location.href = `/dashboard.html?projectId=${projectId}`;
         }
       } else {
         showAlert(result.message);

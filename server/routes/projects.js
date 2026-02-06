@@ -5,21 +5,42 @@ const { authenticatePlatform } = require('../middleware/platformAuth');
 // 检查选科是否在开放时段
 function checkSelectionOpen(project) {
   if (project.status !== 'running') return false;
-  
+
   const now = new Date();
-  
+
   // 检查开始时间
   if (project.selectionStartTime && now < new Date(project.selectionStartTime)) {
     return false; // 未到开始时间
   }
-  
+
   // 检查结束时间
   if (project.selectionEndTime && now > new Date(project.selectionEndTime)) {
     return false; // 已过结束时间
   }
-  
+
   return true; // 在时段内
 }
+
+/**
+ * 获取所有公开项目（无需认证）
+ * GET /api/projects/public
+ */
+router.get('/public', async (req, res) => {
+  try {
+    const projects = await Project.findAll({
+      attributes: ['id', 'name', 'description', 'status'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      code: 200,
+      data: projects
+    });
+  } catch (error) {
+    console.error('获取公开项目列表错误:', error);
+    res.status(500).json({ code: 500, message: '获取项目列表失败' });
+  }
+});
 
 /**
  * 获取用户的所有项目（包括协作项目）
@@ -92,6 +113,17 @@ router.post('/', authenticatePlatform, async (req, res) => {
       status: 'active'
     });
 
+    // 初始化项目数据库
+    const dbManager = require('../lib/DatabaseManager');
+    try {
+      await dbManager.initProjectDb(project.id);
+      console.log(`✓ 项目数据库已创建: ${project.id}`);
+    } catch (dbError) {
+      // 如果数据库初始化失败，回滚项目创建
+      await project.destroy();
+      throw new Error('项目数据库初始化失败: ' + dbError.message);
+    }
+
     res.json({
       code: 200,
       message: '项目创建成功',
@@ -99,7 +131,7 @@ router.post('/', authenticatePlatform, async (req, res) => {
     });
   } catch (error) {
     console.error('创建项目错误:', error);
-    res.status(500).json({ code: 500, message: '创建项目失败' });
+    res.status(500).json({ code: 500, message: error.message || '创建项目失败' });
   }
 });
 
@@ -449,32 +481,25 @@ router.put('/:projectId/admin-credentials', authenticatePlatform, async (req, re
       return res.status(400).json({ code: 400, message: '密码至少需要6位' });
     }
 
-    // 查找或创建该项目的admin用户
-    const { User } = require('../models');
-    let adminUser = await User.findOne({
+    // 使用项目数据库
+    const dbManager = require('../lib/DatabaseManager');
+    const projectModels = await dbManager.getProjectModels(project.id);
+    const { User } = projectModels;
+
+    // 先删除该项目的所有旧admin用户
+    await User.destroy({
       where: {
-        projectId: project.id,
         role: 'admin'
       }
     });
 
-    if (adminUser) {
-      // 更新existing admin
-      await adminUser.update({
-        studentId: username,
-        password: password,
-        name: '管理员'
-      });
-    } else {
-      // 创建新admin
-      await User.create({
-        studentId: username,
-        password: password,
-        name: '管理员',
-        role: 'admin',
-        projectId: project.id
-      });
-    }
+    // 创建新admin用户（在项目数据库中）
+    await User.create({
+      studentId: username,
+      password: password,
+      name: '管理员',
+      role: 'admin'
+    });
 
     res.json({
       code: 200,

@@ -373,6 +373,10 @@
           <label class="form-label">项目限额</label>
           <input type="number" id="editMaxProjects" class="form-input" min="0" required>
         </div>
+        <div class="form-group">
+          <label class="form-label">新密码（留空不修改）</label>
+          <input type="password" id="editUserPassword" class="form-input" placeholder="留空则不修改密码" minlength="6">
+        </div>
         <div class="flex justify-between">
           <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">取消</button>
           <button type="submit" class="btn btn-success">保存</button>
@@ -625,15 +629,23 @@
       const email = document.getElementById('editUserEmail').value;
       const name = document.getElementById('editUserName').value;
       const maxProjects = document.getElementById('editMaxProjects').value;
+      const password = document.getElementById('editUserPassword').value;
 
       try {
+        const body = { email, name, maxProjects: parseInt(maxProjects) };
+
+        // 如果填写了密码，则包含在请求中
+        if (password && password.trim()) {
+          body.password = password;
+        }
+
         const response = await fetch(`/api/platform/superadmin/users/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + token
           },
-          body: JSON.stringify({ email, name, maxProjects: parseInt(maxProjects) })
+          body: JSON.stringify(body)
         });
 
         const result = await response.json();
@@ -691,6 +703,11 @@
     function closeDeleteUserModal() {
       document.getElementById('deleteUserModal').classList.remove('active');
       pendingDeleteUserId = null;
+    }
+
+    function closeEditUserModal() {
+      document.getElementById('editUserModal').classList.remove('active');
+      document.getElementById('editUserPassword').value = ''; // 清空密码字段
     }
 
     async function confirmDeleteUser() {

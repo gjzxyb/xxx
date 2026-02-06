@@ -1,20 +1,66 @@
 const express = require('express');
 const router = express.Router();
-const { Subject } = require('../models');
 const { success, error, notFound } = require('../utils/response');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { projectDb } = require('../middleware/projectDb');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'student-selection-secret-key-2024';
+
+/**
+ * 项目级认证中间件（用于subjects路由）
+ */
+async function authenticateProject(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ code: 401, message: '请先登录' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded;
+
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ code: 401, message: '无效的认证信息' });
+    }
+
+    const { User } = req.projectModels;
+
+    // 在项目数据库中查找用户
+    const user = await User.findByPk(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ code: 401, message: '用户不存在' });
+    }
+
+    req.user = user;
+    req.userId = user.id;
+    next();
+  } catch (err) {
+    console.error('项目认证错误:', err);
+    return res.status(401).json({ code: 401, message: '认证失败' });
+  }
+}
+
+/**
+ * 项目级管理员权限检查
+ */
+async function requireProjectAdmin(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ code: 403, message: '需要管理员权限' });
+  }
+  next();
+}
 
 /**
  * 获取所有科目
  * GET /api/subjects
- * 使用认证中间件，根据projectId过滤
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', projectDb, authenticateProject, async (req, res) => {
   try {
     const { category, active } = req.query;
-    const projectId = req.user.projectId;
+    const { Subject } = req.projectModels;
 
-    const where = { projectId };
+    const where = {};
     if (category) where.category = category;
     if (active !== undefined) where.isActive = active === 'true';
 
@@ -34,12 +80,15 @@ router.get('/', authenticate, async (req, res) => {
  * 获取单个科目
  * GET /api/subjects/:id
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', projectDb, authenticateProject, async (req, res) => {
   try {
+    const { Subject } = req.projectModels;
     const subject = await Subject.findByPk(req.params.id);
+
     if (!subject) {
       return notFound(res, '科目不存在');
     }
+
     success(res, subject);
   } catch (err) {
     console.error('获取科目错误:', err);
@@ -51,30 +100,22 @@ router.get('/:id', async (req, res) => {
  * 创建科目（管理员）
  * POST /api/subjects
  */
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
     const { name, category, description, maxCapacity } = req.body;
-    const projectId = req.user.projectId;
+    const { Subject } = req.projectModels;
 
     if (!name || !category) {
-      return error(res, '请填写科目名称和分类');
-    }
-
-    if (!['physics_history', 'four_electives'].includes(category)) {
-      return error(res, '无效的科目分类');
-    }
-
-    const existing = await Subject.findOne({ where: { name, projectId } });
-    if (existing) {
-      return error(res, '该科目已存在');
+      return error(res, '科目名称和类别不能为空');
     }
 
     const subject = await Subject.create({
       name,
       category,
       description,
-      maxCapacity: maxCapacity || 0,
-      projectId
+      maxCapacity: maxCapacity || null,
+      isActive: true,
+      currentCount: 0
     });
 
     success(res, subject, '科目创建成功');
@@ -88,22 +129,24 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
  * 更新科目（管理员）
  * PUT /api/subjects/:id
  */
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
+    const { name, category, description, maxCapacity, isActive } = req.body;
+    const { Subject } = req.projectModels;
+
     const subject = await Subject.findByPk(req.params.id);
     if (!subject) {
       return notFound(res, '科目不存在');
     }
 
-    const { name, category, description, maxCapacity, isActive } = req.body;
+    await subject.update({
+      name: name || subject.name,
+      category: category || subject.category,
+      description: description !== undefined ? description : subject.description,
+      maxCapacity: maxCapacity !== undefined ? maxCapacity : subject.maxCapacity,
+      isActive: isActive !== undefined ? isActive : subject.isActive
+    });
 
-    if (name) subject.name = name;
-    if (category) subject.category = category;
-    if (description !== undefined) subject.description = description;
-    if (maxCapacity !== undefined) subject.maxCapacity = maxCapacity;
-    if (isActive !== undefined) subject.isActive = isActive;
-
-    await subject.save();
     success(res, subject, '科目更新成功');
   } catch (err) {
     console.error('更新科目错误:', err);
@@ -115,15 +158,13 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
  * 删除科目（管理员）
  * DELETE /api/subjects/:id
  */
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
+    const { Subject } = req.projectModels;
     const subject = await Subject.findByPk(req.params.id);
+
     if (!subject) {
       return notFound(res, '科目不存在');
-    }
-
-    if (subject.currentCount > 0) {
-      return error(res, '该科目已有学生选择，无法删除');
     }
 
     await subject.destroy();

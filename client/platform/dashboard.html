@@ -226,9 +226,9 @@
       const securityBtn = p.type === 'owned' ? `<button class="action-btn" onclick="showSecurityModal('${p.id}')" style="background: var(--bg-hover);">🔐 设置</button>` : '';
 
       if (p.status === 'running') {
-        // 运行中：显示"进入系统"按钮，跳转到项目管理页面
+        // 运行中：显示"进入系统"按钮，跳转到项目登录页面
         return `
-          <button class="action-btn btn-access" onclick="window.open('/admin.html?projectId=${p.id}', '_blank')">进入系统</button>
+          <button class="action-btn btn-access" onclick="window.open('/?projectId=${p.id}', '_blank')">进入系统</button>
           <button class="action-btn btn-stop" onclick="stopProject('${p.id}')">禁用</button>
           ${securityBtn}
         `;

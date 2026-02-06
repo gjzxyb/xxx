@@ -10,11 +10,25 @@ const { authenticate, generateToken } = require('../middleware/auth');
  */
 router.post('/login', async (req, res) => {
   try {
-    const { studentId, password } = req.body;
+    const { studentId, password, projectId } = req.body;
 
     if (!studentId || !password) {
       return error(res, '请输入学号和密码');
     }
+
+    if (!projectId) {
+      return error(res, '缺少项目信息', 400);
+    }
+
+    // 使用项目数据库查询用户
+    const dbManager = require('../lib/DatabaseManager');
+
+    if (!dbManager.projectDbExists(projectId)) {
+      return error(res, '项目不存在', 404);
+    }
+
+    const projectModels = await dbManager.getProjectModels(projectId);
+    const { User } = projectModels;
 
     const user = await User.findOne({ where: { studentId } });
     if (!user) {
@@ -26,11 +40,12 @@ router.post('/login', async (req, res) => {
       return error(res, '学号或密码错误');
     }
 
-    const token = generateToken(user);
+    // 生成 token，包含 projectId
+    const token = generateToken({ ...user.toJSON(), projectId });
 
     success(res, {
       token,
-      user: user.toSafeObject()
+      user: { ...user.toSafeObject(), projectId }
     }, '登录成功');
   } catch (err) {
     console.error('登录错误:', err);
@@ -133,15 +148,15 @@ router.put('/password', authenticate, async (req, res) => {
 router.get('/registration-status', async (req, res) => {
   try {
     const { Project } = require('../models');
-    
+
     // 获取第一个项目（假设单项目系统）
     const project = await Project.findOne();
-    
+
     if (!project) {
       // 如果没有项目，默认允许注册
       return success(res, { registrationEnabled: true });
     }
-    
+
     success(res, {
       registrationEnabled: project.registrationEnabled !== false
     });

@@ -94,9 +94,33 @@
       window.location.href = '/';
     }
 
+    // 获取 projectId
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('projectId');
+
+    if (projectId) {
+      // 更新所有内部链接
+      document.querySelectorAll('a[href^="/dashboard.html"], a[href^="/selection.html"]').forEach(link => {
+        const url = new URL(link.href, window.location.origin);
+        url.searchParams.set('projectId', projectId);
+        link.href = url.toString();
+      });
+    } else {
+       // 如果不是在平台管理页面，且缺少projectId，提示错误
+       if (!window.location.pathname.includes('/platform/')) {
+          alert('缺少项目信息，请重新进入系统');
+          window.location.href = '/platform/dashboard.html';
+       }
+    }
+
+    if (!projectId) {
+      alert('缺少项目信息，请通过正确的方式访问');
+      window.location.href = '/';
+    }
+
     const user = getCurrentUser();
     if (user && user.role === 'admin') {
-      window.location.href = '/admin.html';
+      window.location.href = `/admin.html?projectId=${projectId}`;
     }
 
     // 初始化用户信息
@@ -172,7 +196,7 @@
             </div>
           </div>
           <p style="color: var(--text-muted); font-size: 0.9rem;">
-            提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString('zh-CN') : '-'}
+            提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
           </p>
         `;
       } else {
