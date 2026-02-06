@@ -133,7 +133,93 @@
     </div>
   </div>
 
+  <!-- Custom Confirm Dialog -->
+  <div class="modal-overlay" id="confirmDialog">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">⚠️ 确认操作</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin: 1.5rem 0; color: var(--text-primary);"></p>
+      </div>
+      <div class="flex justify-between" style="gap: 1rem;">
+        <button type="button" class="btn btn-secondary" style="flex: 1;" id="confirmCancel">取消</button>
+        <button type="button" class="btn btn-danger" style="flex: 1;" id="confirmOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
   <script>
+    // Custom Confirm Dialog
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('confirmDialog');
+        const messageEl = document.getElementById('confirmMessage');
+        const okBtn = document.getElementById('confirmOk');
+        const cancelBtn = document.getElementById('confirmCancel');
+
+        messageEl.textContent = message;
+        dialog.classList.add('active');
+
+        function cleanup() {
+          dialog.classList.remove('active');
+          okBtn.removeEventListener('click', handleOk);
+          cancelBtn.removeEventListener('click', handleCancel);
+        }
+
+        function handleOk() {
+          cleanup();
+          resolve(true);
+        }
+
+        function handleCancel() {
+          cleanup();
+          resolve(false);
+        }
+
+        okBtn.addEventListener('click', handleOk);
+        cancelBtn.addEventListener('click', handleCancel);
+      });
+    }
+
+    // Override confirm to use custom dialog
+    window.confirm = showConfirm;
+
+    // Toast utility function
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+
+      const icons = {
+        success: '✓',
+        error: '✗',
+        warning: '⚠',
+        info: 'ℹ'
+      };
+
+      toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+      `;
+
+      container.appendChild(toast);
+
+      // Auto remove after 3 seconds
+      setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Override alert to use toast
+    window.alert = function(message) {
+      showToast(message, 'info');
+    };
+
     const token = localStorage.getItem('platform_token');
     const user = JSON.parse(localStorage.getItem('platform_user') || '{}');
 
