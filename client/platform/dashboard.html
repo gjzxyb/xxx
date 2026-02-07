@@ -512,15 +512,13 @@
       document.getElementById('securityModal').classList.add('active');
       
       // 初始化密码强度指示器
-      setTimeout(() => {
-        if (adminPasswordStrength) {
-          adminPasswordStrength.destroy();
-        }
-        adminPasswordStrength = new PasswordStrengthIndicator({
-          passwordInput: document.getElementById('adminPassword'),
-          container: document.getElementById('adminPasswordStrengthContainer')
-        });
-      }, 100);
+      if (adminPasswordStrength) {
+        adminPasswordStrength.destroy();
+      }
+      adminPasswordStrength = new PasswordStrengthIndicator({
+        passwordInput: document.getElementById('adminPassword'),
+        container: document.getElementById('adminPasswordStrengthContainer')
+      });
     }
 
     function closeSecurityModal() {

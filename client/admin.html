@@ -852,12 +852,13 @@
         document.getElementById('passwordGroup').style.display = 'block';
         
         // 初始化密码强度指示器
-        setTimeout(() => {
-          studentPasswordStrength = new PasswordStrengthIndicator({
-            passwordInput: document.getElementById('studentPassword'),
-            container: document.getElementById('studentPasswordStrengthContainer')
-          });
-        }, 100);
+        if (studentPasswordStrength) {
+          studentPasswordStrength.destroy();
+        }
+        studentPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('studentPassword'),
+          container: document.getElementById('studentPasswordStrengthContainer')
+        });
       }
     }
 

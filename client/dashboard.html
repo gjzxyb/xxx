@@ -184,15 +184,13 @@
       document.getElementById('changePasswordForm').reset();
       
       // 初始化密码强度指示器
-      setTimeout(() => {
-        if (newPasswordStrength) {
-          newPasswordStrength.destroy();
-        }
-        newPasswordStrength = new PasswordStrengthIndicator({
-          passwordInput: document.getElementById('newPassword'),
-          container: document.getElementById('newPasswordStrengthContainer')
-        });
-      }, 100);
+      if (newPasswordStrength) {
+        newPasswordStrength.destroy();
+      }
+      newPasswordStrength = new PasswordStrengthIndicator({
+        passwordInput: document.getElementById('newPassword'),
+        container: document.getElementById('newPasswordStrengthContainer')
+      });
     }
 
     function closeChangePasswordModal() {

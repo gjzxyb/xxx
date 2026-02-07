@@ -106,15 +106,18 @@
     const registerForm = document.getElementById('registerForm');
     const alertBox = document.getElementById('alertBox');
 
-    // 初始化密码强度指示器（延迟初始化，等待DOM加载）
+    // 初始化密码强度指示器
     let registerPasswordStrength = null;
-    setTimeout(() => {
-      registerPasswordStrength = new PasswordStrengthIndicator({
-        passwordInput: document.getElementById('regPassword'),
-        confirmInput: document.getElementById('regConfirmPassword'),
-        container: document.getElementById('regPasswordStrengthContainer')
-      });
-    }, 100);
+    // 在 DOM 加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof PasswordStrengthIndicator !== 'undefined') {
+        registerPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('regPassword'),
+          confirmInput: document.getElementById('regConfirmPassword'),
+          container: document.getElementById('regPasswordStrengthContainer')
+        });
+      }
+    });
 
     // 显示提示
     function showAlert(message, type = 'danger') {
