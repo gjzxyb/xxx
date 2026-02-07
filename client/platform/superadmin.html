@@ -487,9 +487,14 @@
                         safeDOM.createElement('button', {
                           className: user.isDisabled ? 'btn btn-sm btn-success' : 'btn btn-sm btn-warning',
                           text: user.isDisabled ? '启用' : '禁用',
-                          on: { click: () => toggleUserStatus(user.id, user.isDisabled) }
-                        })
-                      ]
+                          on: { click: () => toggleUserStatus(user.id, !user.isDisabled) }
+                        }),
+                        !user.isSuperAdmin ? safeDOM.createElement('button', {
+                          className: 'btn btn-sm btn-danger',
+                          text: '删除',
+                          on: { click: () => deleteUser(user.id, user.email, user.projectCount) }
+                        }) : null
+                      ].filter(Boolean)
                     })
                   ]
                 })

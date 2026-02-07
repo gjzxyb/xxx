@@ -4,6 +4,7 @@ const { Project } = require('../models'); // 平台级模型
 const { success, error } = require('../utils/response');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validatePasswordMiddleware } = require('../middleware/passwordPolicy');
+const { validateTimeSettings, validateUserCreate, validateStudentsImport } = require('../middleware/validation');
 
 /**
  * 获取概览统计数据
@@ -34,7 +35,7 @@ router.get('/overview', authenticateProject, requireProjectAdmin, async (req, re
  * 更新项目选科时间设置
  * PUT /api/admin/selection-time
  */
-router.put('/selection-time', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.put('/selection-time', authenticateProject, requireProjectAdmin, validateTimeSettings, async (req, res) => {
   try {
     const { selectionStartTime, selectionEndTime } = req.body;
     const projectId = req.projectId;

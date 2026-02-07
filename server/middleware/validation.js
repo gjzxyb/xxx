@@ -205,6 +205,52 @@ const validatePasswordChange = [
   handleValidationErrors
 ];
 
+/**
+ * 项目信息验证规则（来自 inputValidator.js）
+ */
+const validateProject = [
+  body('projectName')
+    .trim()
+    .notEmpty().withMessage('项目名称不能为空')
+    .isLength({ min: 2, max: 100 }).withMessage('项目名称长度必须在2-100字符之间'),
+  body('schoolName')
+    .optional()
+    .trim()
+    .isLength({ max: 200 }).withMessage('学校名称最多200字符'),
+  handleValidationErrors
+];
+
+/**
+ * 邮箱验证规则（来自 inputValidator.js）
+ */
+const validateEmail = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('邮箱不能为空')
+    .isEmail().withMessage('邮箱格式不正确')
+    .normalizeEmail(),
+  handleValidationErrors
+];
+
+/**
+ * 注册验证规则（来自 inputValidator.js）
+ */
+const validateRegister = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('邮箱不能为空')
+    .isEmail().withMessage('邮箱格式不正确')
+    .normalizeEmail(),
+  body('name')
+    .trim()
+    .notEmpty().withMessage('姓名不能为空')
+    .isLength({ min: 2, max: 50 }).withMessage('姓名长度必须在2-50字符之间'),
+  body('password')
+    .notEmpty().withMessage('密码不能为空')
+    .isLength({ min: 8, max: 32 }).withMessage('密码长度必须在8-32字符之间'),
+  handleValidationErrors
+];
+
 module.exports = {
   // 工具函数
   handleValidationErrors,
@@ -219,5 +265,8 @@ module.exports = {
   validateTimeSettings,
   validateSubject,
   validateProjectId,
-  validatePasswordChange
+  validatePasswordChange,
+  validateProject,
+  validateEmail,
+  validateRegister
 };

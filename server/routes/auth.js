@@ -4,6 +4,7 @@ const { User } = require('../models');
 const { success, error } = require('../utils/response');
 const { authenticate, generateToken } = require('../middleware/auth');
 const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
+const { validateLogin, validatePasswordChange } = require('../middleware/validation');
 const loginAttemptTracker = require('../lib/LoginAttemptTracker');
 const tokenBlacklist = require('../lib/TokenBlacklist');
 const jwt = require('jsonwebtoken');
@@ -13,7 +14,7 @@ const jwt = require('jsonwebtoken');
  * POST /api/auth/login
  * 安全性：添加登录失败锁定机制
  */
-router.post('/login', async (req, res) => {
+router.post('/login', validateLogin, async (req, res) => {
   try {
     const { studentId, password, projectId } = req.body;
 

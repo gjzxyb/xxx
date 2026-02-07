@@ -38,3 +38,10 @@ coverage/
 *.db
 databases/*.sqlite
 databases/*.db
+server/data/*.sqlite
+server/data/*.db
+platform/server/data/*.sqlite
+
+# Test coverage
+.nyc_output/
+coverage/
