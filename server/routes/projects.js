@@ -505,6 +505,7 @@ router.put('/:projectId/admin-credentials', authenticatePlatform, async (req, re
     });
 
     // 创建新admin用户（在项目数据库中）
+    // 注意：密码会通过User模型的beforeCreate钩子自动哈希
     await User.create({
       studentId: username,
       password: password,

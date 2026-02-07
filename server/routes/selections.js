@@ -146,66 +146,93 @@ router.post('/', projectDb, authenticateProject, async (req, res) => {
       return error(res, '四选二科目选择无效');
     }
 
-    // 检查容量
-    const checkCapacity = async (subject, excludeUserId) => {
-      if (subject.maxCapacity <= 0) return true;
-      const count = await Selection.count({
-        where: {
-          [require('sequelize').Op.or]: [
-            { physicsOrHistory: subject.id },
-            { electiveOne: subject.id },
-            { electiveTwo: subject.id }
-          ],
-          userId: { [require('sequelize').Op.ne]: excludeUserId }
-        }
-      });
-      return count < subject.maxCapacity;
-    };
-
-    if (!await checkCapacity(phSubject, req.userId)) {
-      return error(res, `${phSubject.name} 已达到选课人数上限`);
-    }
-    if (!await checkCapacity(elec1, req.userId)) {
-      return error(res, `${elec1.name} 已达到选课人数上限`);
-    }
-    if (!await checkCapacity(elec2, req.userId)) {
-      return error(res, `${elec2.name} 已达到选课人数上限`);
-    }
-
-    // 查找或创建选科记录
-    let selection = await Selection.findOne({ where: { userId: req.userId } });
-
-    if (selection) {
-      selection.physicsOrHistory = physicsOrHistory;
-      selection.electiveOne = electiveOne;
-      selection.electiveTwo = electiveTwo;
-      selection.status = 'submitted';
-      selection.submittedAt = new Date();
-      await selection.save();
-    } else {
-      selection = await Selection.create({
-        userId: req.userId,
-        physicsOrHistory,
-        electiveOne,
-        electiveTwo,
-        status: 'submitted',
-        submittedAt: new Date()
-      });
-    }
-
-    // 重新加载关联
-    await selection.reload({
-      include: [
-        { model: Subject, as: 'physicsHistorySubject' },
-        { model: Subject, as: 'electiveOneSubject' },
-        { model: Subject, as: 'electiveTwoSubject' }
-      ]
+    // 使用事务和行锁防止并发竞态条件
+    const sequelize = Selection.sequelize;
+    const transaction = await sequelize.transaction({
+      isolationLevel: require('sequelize').Transaction.ISOLATION_LEVELS.SERIALIZABLE
     });
 
-    success(res, selection, '选科提交成功');
+    try {
+      // 在事务中检查容量（带行锁）
+      const checkCapacity = async (subject, excludeUserId) => {
+        if (subject.maxCapacity <= 0) return true;
+        const count = await Selection.count({
+          where: {
+            [require('sequelize').Op.or]: [
+              { physicsOrHistory: subject.id },
+              { electiveOne: subject.id },
+              { electiveTwo: subject.id }
+            ],
+            userId: { [require('sequelize').Op.ne]: excludeUserId }
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE
+        });
+        return count < subject.maxCapacity;
+      };
+
+      if (!await checkCapacity(phSubject, req.userId)) {
+        await transaction.rollback();
+        return error(res, `${phSubject.name} 已达到选课人数上限`);
+      }
+      if (!await checkCapacity(elec1, req.userId)) {
+        await transaction.rollback();
+        return error(res, `${elec1.name} 已达到选课人数上限`);
+      }
+      if (!await checkCapacity(elec2, req.userId)) {
+        await transaction.rollback();
+        return error(res, `${elec2.name} 已达到选课人数上限`);
+      }
+
+      // 查找或创建选科记录
+      let selection = await Selection.findOne({ 
+        where: { userId: req.userId },
+        transaction,
+        lock: transaction.LOCK.UPDATE
+      });
+
+      if (selection) {
+        selection.physicsOrHistory = physicsOrHistory;
+        selection.electiveOne = electiveOne;
+        selection.electiveTwo = electiveTwo;
+        selection.status = 'submitted';
+        selection.submittedAt = new Date();
+        await selection.save({ transaction });
+      } else {
+        selection = await Selection.create({
+          userId: req.userId,
+          physicsOrHistory,
+          electiveOne,
+          electiveTwo,
+          status: 'submitted',
+          submittedAt: new Date()
+        }, { transaction });
+      }
+
+      // 提交事务
+      await transaction.commit();
+
+      // 重新加载关联
+      await selection.reload({
+        include: [
+          { model: Subject, as: 'physicsHistorySubject' },
+          { model: Subject, as: 'electiveOneSubject' },
+          { model: Subject, as: 'electiveTwoSubject' }
+        ]
+      });
+
+      success(res, selection, '选科提交成功');
+    } catch (err) {
+      // 回滚事务
+      if (transaction && !transaction.finished) {
+        await transaction.rollback();
+      }
+      console.error('提交选科失败:', err);
+      error(res, '提交选科失败', 500);
+    }
   } catch (err) {
-    console.error('提交选科错误:', err);
-    error(res, '提交选科失败', 500);
+    console.error('选科提交错误:', err);
+    error(res, '选科验证失败', 500);
   }
 });
 
@@ -365,7 +392,12 @@ router.get('/stats', projectDb, async (req, res) => {
 
     const token = authHeader.substring(7);
     const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'student-selection-secret-key-2024';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    
+    if (!JWT_SECRET) {
+      console.error('JWT_SECRET未配置！请在.env文件中设置JWT_SECRET');
+      return res.status(500).json({ code: 500, message: '服务器配置错误' });
+    }
 
     let decoded;
     try {

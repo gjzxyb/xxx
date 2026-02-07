@@ -207,7 +207,34 @@ const api = {
       method: 'POST'
     }),
 
-    exportUrl: () => API_BASE + '/admin/export?token=' + getToken()
+    // 导出功能 - 使用POST方法而非URL传递token
+    export: () => {
+      const token = getToken();
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectId = urlParams.get('projectId');
+      
+      // 创建一个隐藏的form来发起POST请求并下载文件
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = API_BASE + '/admin/export' + (projectId ? '?projectId=' + projectId : '');
+      form.target = '_blank';
+      
+      const tokenInput = document.createElement('input');
+      tokenInput.type = 'hidden';
+      tokenInput.name = 'token';
+      tokenInput.value = token;
+      form.appendChild(tokenInput);
+      
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    },
+    
+    // 保留旧的exportUrl方法以兼容，但标记为废弃
+    exportUrl: () => {
+      console.warn('exportUrl已废弃，请使用api.admin.export()方法');
+      return API_BASE + '/admin/export';
+    }
   }
 };
 

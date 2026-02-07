@@ -6,8 +6,13 @@ const { platformDb, PlatformUser, PlatformConfig } = require('./models');
 const app = express();
 const PORT = process.env.PLATFORM_PORT || 4001;
 
-// 中间件
-app.use(cors());
+// 中间件 - 配置CORS以限制来源
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000', 'http://localhost:4001'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -46,16 +51,24 @@ async function initializeDatabase() {
     });
 
     if (adminCount === 0) {
+      // 从环境变量读取初始管理员密码，若未设置则生成随机密码
+      const crypto = require('crypto');
+      const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+      
       await PlatformUser.create({
-        email: 'admin@platform.com',
-        password: 'admin123',
+        email: process.env.INITIAL_ADMIN_EMAIL || 'admin@platform.com',
+        password: initialPassword,
         name: '超级管理员',
         isSuperAdmin: true,
         maxProjects: 999
       });
       console.log('✓ 默认超级管理员已创建');
-      console.log('  邮箱: admin@platform.com');
-      console.log('  密码: admin123');
+      console.log('  邮箱:', process.env.INITIAL_ADMIN_EMAIL || 'admin@platform.com');
+      console.log('  密码:', initialPassword);
+      console.log('  ⚠️  请立即登录并修改密码！');
+      if (!process.env.INITIAL_ADMIN_PASSWORD) {
+        console.log('  💡 提示: 可在.env中设置INITIAL_ADMIN_PASSWORD和INITIAL_ADMIN_EMAIL自定义初始管理员账户');
+      }
     }
 
     // 设置默认配置

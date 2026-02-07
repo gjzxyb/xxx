@@ -124,11 +124,15 @@ router.post('/students', authenticateProject, requireProjectAdmin, validatePassw
       return error(res, '学号已存在');
     }
 
+    // 生成随机初始密码（如果未提供）
+    const crypto = require('crypto');
+    const initialPassword = password || crypto.randomBytes(8).toString('hex');
+    
     const student = await User.create({
       studentId,
       name,
       className,
-      password: password || studentId,
+      password: initialPassword,
       role: 'student'
     });
 
@@ -198,11 +202,15 @@ router.post('/import-students', authenticateProject, requireProjectAdmin, async 
       for (const student of students) {
         const { studentId, name, className, password } = student;
         
+        // 生成随机初始密码（如果未提供）
+        const crypto = require('crypto');
+        const initialPassword = password || crypto.randomBytes(8).toString('hex');
+        
         await User.create({
           studentId,
           name,
           className,
-          password: password || studentId,
+          password: initialPassword,
           role: 'student'
         }, { transaction });
 
