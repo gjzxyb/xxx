@@ -6,6 +6,44 @@ const { projectDb } = require('../middleware/projectDb');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validateSelectionSubmit } = require('../middleware/validation');
 
+// 动态导入 Project 模型
+const getProject = () => {
+  const { Project } = require('../models');
+  return Project;
+};
+
+/**
+ * 检查选科时间是否开放
+ * @param {string} projectId - 项目ID
+ * @returns {Promise<{open: boolean, message: string}>}
+ */
+async function checkSelectionTime(projectId) {
+  const Project = getProject();
+  const project = await Project.findByPk(projectId);
+  if (!project) {
+    return { open: false, message: '项目不存在' };
+  }
+
+  const { selectionStartTime, selectionEndTime } = project;
+
+  if (!selectionStartTime || !selectionEndTime) {
+    return { open: false, message: '选科时间未设置' };
+  }
+
+  const now = new Date();
+  const start = new Date(selectionStartTime);
+  const end = new Date(selectionEndTime);
+
+  if (now < start) {
+    return { open: false, message: `选科将于 ${selectionStartTime} 开始` };
+  }
+  if (now > end) {
+    return { open: false, message: `选科已于 ${selectionEndTime} 结束` };
+  }
+
+  return { open: true, message: '选科进行中' };
+}
+
 /**
  * 获取选科状态（是否在选科时间内）
  * GET /api/selections/status
@@ -13,6 +51,7 @@ const { validateSelectionSubmit } = require('../middleware/validation');
 router.get('/status', projectDb, authenticateProject, async (req, res) => {
   try {
     const projectId = req.projectId;
+    const Project = getProject();
 
     const project = await Project.findByPk(projectId);
     if (!project) {

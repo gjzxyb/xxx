@@ -161,69 +161,88 @@
       const content = document.getElementById('selectionContent');
       const result = await api.selections.getMy();
 
-        if (result.code === 200 && result.data) {
-          const content = document.getElementById('selectionContent');
-          safeDOM.empty(content);
-          
-          const sel = result.data;
-          const card = safeDOM.createElement('div', {
-            className: 'card',
-            children: [
-              safeDOM.createElement('h2', { text: '已选科目' }),
-              safeDOM.createElement('div', {
-                className: 'selection-display',
-                children: [
-                  safeDOM.createElement('div', {
-                    className: 'subject-item physics-history',
-                    children: [
-                      safeDOM.createElement('label', { text: '首选科目' }),
-                      safeDOM.createElement('div', {
-                        className: 'value',
-                        text: sel.physicsHistorySubject?.name || '-'
-                      })
-                    ]
-                  }),
-                  safeDOM.createElement('div', {
-                    className: 'subject-item electives',
-                    children: [
-                      safeDOM.createElement('label', { text: '再选科目' }),
-                      safeDOM.createElement('div', {
-                        className: 'value',
-                        text: `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`
-                      })
-                    ]
-                  }),
-                  safeDOM.createElement('div', {
-                    className: 'submit-time',
-                    text: `提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}`
-                  })
-                ]
-              }),
-              safeDOM.createElement('a', {
-                attrs: { href: 'selection.html' },
-                className: 'btn btn-secondary',
-                text: '修改选科'
-              })
-            ]
-          });
-          content.appendChild(card);
-        } else {
-          const content = document.getElementById('selectionContent');
-          safeDOM.empty(content);
-          
-          const card = safeDOM.createElement('div', {
-            className: 'card text-center',
-            children: [
-              safeDOM.createElement('p', { text: '您还未进行选科' }),
-              safeDOM.createElement('a', {
-                attrs: { href: 'selection.html' },
-                className: 'btn btn-primary',
-                text: '开始选科'
-              })
-            ]
-          });
-          content.appendChild(card);
-        }
+      if (result.code === 200 && result.data) {
+        const sel = result.data;
+        
+        // 更新统计卡片
+        document.getElementById('statPhysicsHistory').textContent = sel.physicsHistorySubject?.name || '-';
+        document.getElementById('statElectives').textContent = 
+          `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`;
+        
+        const statusMap = {
+          'draft': '草稿',
+          'submitted': '已提交',
+          'confirmed': '已确认',
+          'cancelled': '已取消'
+        };
+        document.getElementById('statStatus').textContent = statusMap[sel.status] || '-';
+        
+        // 更新选科详情
+        safeDOM.empty(content);
+        
+        const card = safeDOM.createElement('div', {
+          className: 'card',
+          children: [
+            safeDOM.createElement('h2', { text: '已选科目' }),
+            safeDOM.createElement('div', {
+              className: 'selection-display',
+              children: [
+                safeDOM.createElement('div', {
+                  className: 'subject-item physics-history',
+                  children: [
+                    safeDOM.createElement('label', { text: '首选科目' }),
+                    safeDOM.createElement('div', {
+                      className: 'value',
+                      text: sel.physicsHistorySubject?.name || '-'
+                    })
+                  ]
+                }),
+                safeDOM.createElement('div', {
+                  className: 'subject-item electives',
+                  children: [
+                    safeDOM.createElement('label', { text: '再选科目' }),
+                    safeDOM.createElement('div', {
+                      className: 'value',
+                      text: `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`
+                    })
+                  ]
+                }),
+                safeDOM.createElement('div', {
+                  className: 'submit-time',
+                  text: `提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}`
+                })
+              ]
+            }),
+            safeDOM.createElement('a', {
+              attrs: { href: 'selection.html' },
+              className: 'btn btn-secondary',
+              text: '修改选科'
+            })
+          ]
+        });
+        content.appendChild(card);
+      } else {
+        // 未选科时的统计卡片显示
+        document.getElementById('statPhysicsHistory').textContent = '未选择';
+        document.getElementById('statElectives').textContent = '未选择';
+        document.getElementById('statStatus').textContent = '未提交';
+        
+        // 更新选科详情
+        safeDOM.empty(content);
+        
+        const card = safeDOM.createElement('div', {
+          className: 'card text-center',
+          children: [
+            safeDOM.createElement('p', { text: '您还未进行选科' }),
+            safeDOM.createElement('a', {
+              attrs: { href: 'selection.html' },
+              className: 'btn btn-primary',
+              text: '开始选科'
+            })
+          ]
+        });
+        content.appendChild(card);
+      }
     }
 
     // 初始化

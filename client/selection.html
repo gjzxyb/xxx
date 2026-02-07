@@ -287,17 +287,22 @@
         ? subject.maxCapacity - subject.currentCount
         : '不限';
 
-      return `
-        <div class="subject-card ${isSelected ? 'selected' : ''} ${isFull && !isSelected ? 'disabled' : ''}"
-             data-id="${subject.id}" data-type="${type}" data-name="${subject.name}">
-          <div class="subject-name">${subject.name}</div>
-          <div class="subject-desc">${subject.description || ''}</div>
-          <div class="subject-meta">
-            <span class="subject-capacity">剩余名额: ${remaining}</span>
-            ${isSelected ? '<span class="badge badge-success">已选</span>' : ''}
-          </div>
+      const card = document.createElement('div');
+      card.className = `subject-card ${isSelected ? 'selected' : ''} ${isFull && !isSelected ? 'disabled' : ''}`;
+      card.dataset.id = subject.id;
+      card.dataset.type = type;
+      card.dataset.name = subject.name;
+      
+      card.innerHTML = `
+        <div class="subject-name">${subject.name}</div>
+        <div class="subject-desc">${subject.description || ''}</div>
+        <div class="subject-meta">
+          <span class="subject-capacity">剩余名额: ${remaining}</span>
+          ${isSelected ? '<span class="badge badge-success">已选</span>' : ''}
         </div>
       `;
+      
+      return card;
     }
 
     // 点击科目
