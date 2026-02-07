@@ -355,12 +355,18 @@ router.post('/students/:id/reset-password', authenticateProject, requireProjectA
       return error(res, '学生不存在');
     }
 
-    // 重置密码为学号
+    // 生成随机临时密码
+    const crypto = require('crypto');
+    const newPassword = crypto.randomBytes(8).toString('hex');
+    
     await student.update({
-      password: student.studentId
+      password: newPassword
     });
 
-    success(res, null, '密码已重置为学号');
+    success(res, { 
+      studentId: student.studentId,
+      newPassword: newPassword 
+    }, '密码已重置，请告知学生新密码');
   } catch (err) {
     console.error('重置密码失败:', err);
     error(res, '重置失败', 500);

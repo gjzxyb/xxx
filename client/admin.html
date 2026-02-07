@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="js/safeDOM.js"></script>
 </head>
 <body>
   <div class="page-wrapper">
@@ -431,19 +432,21 @@
     function showToast(message, type = 'success') {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
-      toast.className =`toast toast-${type}`;
-
-      const icons = {
-        success: '✓',
-        error: '✗',
-        warning: '⚠',
-        info: 'ℹ'
-      };
-
-      toast.innerHTML = `
-        <span class="toast-icon">${icons[type] || icons.info}</span>
-        <span class="toast-message">${message}</span>
+      toast.className = 'toast';
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        ${type === 'success' ? 'background: linear-gradient(135deg, var(--success) 0%, #059669 100%);' : 'background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);'}
       `;
+      safeDOM.setText(toast, message);
 
       container.appendChild(toast);
 
@@ -596,20 +599,47 @@
           'four_electives': '再选科目'
         };
 
-        tbody.innerHTML = result.data.map(s => `
-          <tr>
-            <td><strong>${s.name}</strong></td>
-            <td><span class="badge badge-info">${categoryMap[s.category]}</span></td>
-            <td>${s.description || '-'}</td>
-            <td>${s.maxCapacity || '不限'}</td>
-            <td>${s.currentCount || 0}</td>
-            <td>${s.isActive ? '<span class="badge badge-success">启用</span>' : '<span class="badge badge-danger">禁用</span>'}</td>
-            <td>
-              <button class="btn btn-sm btn-secondary" onclick="editSubject(${s.id})">编辑</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteSubject(${s.id})">删除</button>
-            </td>
-          </tr>
-        `).join('');
+        safeDOM.empty(tbody);
+        result.data.forEach(s => {
+          const tr = safeDOM.createElement('tr', {
+            children: [
+              safeDOM.createElement('td', {
+                children: [safeDOM.createElement('strong', { text: s.name })]
+              }),
+              safeDOM.createElement('td', {
+                children: [safeDOM.createElement('span', {
+                  className: 'badge badge-info',
+                  text: categoryMap[s.category]
+                })]
+              }),
+              safeDOM.createElement('td', { text: s.description || '-' }),
+              safeDOM.createElement('td', { text: s.maxCapacity || '不限' }),
+              safeDOM.createElement('td', { text: s.currentCount || 0 }),
+              safeDOM.createElement('td', {
+                children: [safeDOM.createElement('span', {
+                  className: s.isActive ? 'badge badge-success' : 'badge badge-danger',
+                  text: s.isActive ? '启用' : '禁用'
+                })]
+              }),
+              safeDOM.createElement('td', {
+                children: [
+                  safeDOM.createElement('button', {
+                    className: 'btn btn-sm btn-secondary',
+                    text: '编辑',
+                    on: { click: () => editSubject(s.id) }
+                  }),
+                  document.createTextNode(' '),
+                  safeDOM.createElement('button', {
+                    className: 'btn btn-sm btn-danger',
+                    text: '删除',
+                    on: { click: () => deleteSubject(s.id) }
+                  })
+                ]
+              })
+            ]
+          });
+          tbody.appendChild(tr);
+        });
       }
     }
 
@@ -710,36 +740,87 @@
       if (result.code === 200) {
         const { data, total, limit } = result.data;
 
-        tbody.innerHTML = data.map(s => {
+        safeDOM.empty(tbody);
+        data.forEach(s => {
           const sel = s.selection;
           const hasSelection = sel && sel.status !== 'cancelled';
-          return `
-            <tr>
-              <td>${s.studentId}</td>
-              <td>${s.name}</td>
-              <td>${s.className || '-'}</td>
-              <td>${hasSelection ? '<span class="badge badge-success">已选</span>' : '<span class="badge badge-warning">未选</span>'}</td>
-              <td>
-                <div class="flex gap-1">
-                  <button class="btn btn-sm btn-primary" onclick="editStudent(${s.id})" title="编辑">🖊️</button>
-                  <button class="btn btn-sm btn-warning" onclick="resetPassword(${s.id}, '${s.studentId}')" title="重置密码">🔑</button>
-                  <button class="btn btn-sm btn-danger" onclick="deleteStudent(${s.id}, '${s.name}')" title="删除">🗑️</button>
-                </div>
-              </td>
-            </tr>
-          `;
-        }).join('');
+          
+          const tr = safeDOM.createElement('tr', {
+            children: [
+              safeDOM.createElement('td', { text: s.studentId }),
+              safeDOM.createElement('td', { text: s.name }),
+              safeDOM.createElement('td', { text: s.className || '-' }),
+              safeDOM.createElement('td', {
+                children: [safeDOM.createElement('span', {
+                  className: hasSelection ? 'badge badge-success' : 'badge badge-warning',
+                  text: hasSelection ? '已选' : '未选'
+                })]
+              }),
+              safeDOM.createElement('td', {
+                children: [
+                  safeDOM.createElement('div', {
+                    className: 'flex gap-1',
+                    children: [
+                      safeDOM.createElement('button', {
+                        className: 'btn btn-sm btn-primary',
+                        text: '🖊️',
+                        attrs: { title: '编辑' },
+                        on: { click: () => editStudent(s.id) }
+                      }),
+                      safeDOM.createElement('button', {
+                        className: 'btn btn-sm btn-warning',
+                        text: '🔑',
+                        attrs: { title: '重置密码' },
+                        on: { click: () => resetPassword(s.id, s.studentId) }
+                      }),
+                      safeDOM.createElement('button', {
+                        className: 'btn btn-sm btn-danger',
+                        text: '🗑️',
+                        attrs: { title: '删除' },
+                        on: { click: () => deleteStudent(s.id, s.name) }
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          });
+          tbody.appendChild(tr);
+        });
 
         // 分页
         const totalPages = Math.ceil(total / limit);
-        document.getElementById('studentsPagination').innerHTML = `
-          <span>共 ${total} 条记录</span>
-          <div class="flex gap-1">
-            ${page > 1 ? `<button class="btn btn-sm btn-secondary" onclick="loadStudents(${page-1})">上一页</button>` : ''}
-            <span style="padding: 0.5rem;">第 ${page}/${totalPages} 页</span>
-            ${page < totalPages ? `<button class="btn btn-sm btn-secondary" onclick="loadStudents(${page+1})">下一页</button>` : ''}
-          </div>
-        `;
+        const pagination = document.getElementById('studentsPagination');
+        safeDOM.empty(pagination);
+        
+        pagination.appendChild(safeDOM.createElement('span', {
+          text: `共 ${total} 条记录`
+        }));
+        
+        const btnGroup = safeDOM.createElement('div', { className: 'flex gap-1' });
+        
+        if (page > 1) {
+          btnGroup.appendChild(safeDOM.createElement('button', {
+            className: 'btn btn-sm btn-secondary',
+            text: '上一页',
+            on: { click: () => loadStudents(page - 1) }
+          }));
+        }
+        
+        btnGroup.appendChild(safeDOM.createElement('span', {
+          text: `第 ${page}/${totalPages} 页`,
+          attrs: { style: 'padding: 0.5rem;' }
+        }));
+        
+        if (page < totalPages) {
+          btnGroup.appendChild(safeDOM.createElement('button', {
+            className: 'btn btn-sm btn-secondary',
+            text: '下一页',
+            on: { click: () => loadStudents(page + 1) }
+          }));
+        }
+        
+        pagination.appendChild(btnGroup);
       }
     }
 
@@ -764,7 +845,8 @@
         
         // 编辑模式不需要密码强度指示器
         if (studentPasswordStrength) {
-          document.getElementById('studentPasswordStrengthContainer').innerHTML = '';
+          const container = document.getElementById('studentPasswordStrengthContainer');
+          safeDOM.empty(container);
         }
       } else {
         document.getElementById('passwordGroup').style.display = 'block';
@@ -955,13 +1037,24 @@
         }
 
         if (data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无数据</td></tr>';
+          safeDOM.empty(tbody);
+          const tr = safeDOM.createElement('tr', {
+            children: [
+              safeDOM.createElement('td', {
+                attrs: { colspan: '6' },
+                className: 'text-center',
+                text: '暂无数据'
+              })
+            ]
+          });
+          tbody.appendChild(tr);
         } else {
-          tbody.innerHTML = data.map(sel => {
+          safeDOM.empty(tbody);
+          data.forEach(sel => {
             const statusMap = {
-              'submitted': '<span class="badge badge-primary">已提交</span>',
-              'confirmed': '<span class="badge badge-success">已确认</span>',
-              'cancelled': '<span class="badge badge-secondary">已取消</span>'
+              'submitted': { className: 'badge badge-primary', text: '已提交' },
+              'confirmed': { className: 'badge badge-success', text: '已确认' },
+              'cancelled': { className: 'badge badge-secondary', text: '已取消' }
             };
             const submittedAt = sel.submittedAt ? new Date(sel.submittedAt).toLocaleString('zh-CN', {
               year: 'numeric', month: '2-digit', day: '2-digit',
@@ -976,29 +1069,63 @@
               ? '-'
               : `${ph} + ${elec1} + ${elec2}`;
 
-            return `
-              <tr>
-                <td>${sel.user?.studentId || '-'}</td>
-                <td>${sel.user?.name || '-'}</td>
-                <td>${sel.user?.className || '-'}</td>
-                <td>${combination}</td>
-                <td>${statusMap[sel.status] || '-'}</td>
-                <td style="font-family: monospace; font-size: 0.85rem;">${submittedAt}</td>
-              </tr>
-            `;
-          }).join('');
+            const statusInfo = statusMap[sel.status] || { className: 'badge', text: '-' };
+            
+            const tr = safeDOM.createElement('tr', {
+              children: [
+                safeDOM.createElement('td', { text: sel.user?.studentId || '-' }),
+                safeDOM.createElement('td', { text: sel.user?.name || '-' }),
+                safeDOM.createElement('td', { text: sel.user?.className || '-' }),
+                safeDOM.createElement('td', { text: combination }),
+                safeDOM.createElement('td', {
+                  children: [safeDOM.createElement('span', {
+                    className: statusInfo.className,
+                    text: statusInfo.text
+                  })]
+                }),
+                safeDOM.createElement('td', {
+                  text: submittedAt,
+                  attrs: { style: 'font-family: monospace; font-size: 0.85rem;' }
+                })
+              ]
+            });
+            tbody.appendChild(tr);
+          });
         }
 
         // 分页
         const totalPages = Math.ceil(total / limit);
-        document.getElementById('selectionsPagination').innerHTML = `
-          <span>共 ${total} 条记录</span>
-          <div class="flex gap-1">
-            ${page > 1 ? `<button class="btn btn-sm btn-secondary" onclick="loadSelectionList(${page-1})">上一页</button>` : ''}
-            <span style="padding: 0.5rem;">第 ${page}/${totalPages || 1} 页</span>
-            ${page < totalPages ? `<button class="btn btn-sm btn-secondary" onclick="loadSelectionList(${page+1})">下一页</button>` : ''}
-          </div>
-        `;
+        const pagination = document.getElementById('selectionsPagination');
+        safeDOM.empty(pagination);
+        
+        pagination.appendChild(safeDOM.createElement('span', {
+          text: `共 ${total} 条记录`
+        }));
+        
+        const btnGroup = safeDOM.createElement('div', { className: 'flex gap-1' });
+        
+        if (page > 1) {
+          btnGroup.appendChild(safeDOM.createElement('button', {
+            className: 'btn btn-sm btn-secondary',
+            text: '上一页',
+            on: { click: () => loadSelections(page - 1) }
+          }));
+        }
+        
+        btnGroup.appendChild(safeDOM.createElement('span', {
+          text: `第 ${page}/${totalPages} 页`,
+          attrs: { style: 'padding: 0.5rem;' }
+        }));
+        
+        if (page < totalPages) {
+          btnGroup.appendChild(safeDOM.createElement('button', {
+            className: 'btn btn-sm btn-secondary',
+            text: '下一页',
+            on: { click: () => loadSelections(page + 1) }
+          }));
+        }
+        
+        pagination.appendChild(btnGroup);
       }
     }
 
@@ -1034,76 +1161,156 @@
 
           // 生成组合列表
           if (combinations.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">暂无选科数据</p>';
+            safeDOM.setText(container, '暂无选科数据');
+            container.style.cssText = 'text-align: center; color: var(--text-muted); padding: 2rem;';
             return;
           }
 
           const maxCount = Math.max(...combinations.map(c => c.count));
 
-          container.innerHTML = `
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 50px;">排名</th>
-                    <th>选科组合</th>
-                    <th style="width: 100px;">方向</th>
-                    <th style="width: 100px;">人数</th>
-                    <th style="width: 200px;">占比</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${combinations.map((c, i) => {
-                    const percent = total > 0 ? (c.count / total * 100).toFixed(1) : 0;
-                    const barWidth = maxCount > 0 ? (c.count / maxCount * 100) : 0;
-                    const isPhysics = c.physicsHistory === '物理';
-                    return `
-                      <tr>
-                        <td style="text-align: center; font-weight: 600;">${i + 1}</td>
-                        <td>
-                          <strong style="font-size: 1.1rem;">${c.combination}</strong>
-                        </td>
-                        <td>
-                          <span class="badge ${isPhysics ? 'badge-info' : 'badge-warning'}">
-                            ${isPhysics ? '物理' : '历史'}方向
-                          </span>
-                        </td>
-                        <td style="text-align: center;">
-                          <strong style="font-size: 1.2rem;">${c.count}</strong>
-                          <span style="color: var(--text-muted);"> 人</span>
-                        </td>
-                        <td>
-                          <div class="flex items-center gap-2">
-                            <div class="progress" style="flex: 1; height: 12px;">
-                              <div class="progress-bar" style="width: ${barWidth}%; background: ${isPhysics ? 'linear-gradient(90deg, #3b82f6, #60a5fa)' : 'linear-gradient(90deg, #f59e0b, #fbbf24)'};"></div>
-                            </div>
-                            <span style="min-width: 50px; text-align: right;">${percent}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-
-            <div class="mt-4" style="display: flex; gap: 2rem; justify-content: center;">
-              <div style="text-align: center;">
-                <div style="width: 20px; height: 20px; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></div>
-                <span>物理方向: ${physicsCount} 人 (${total > 0 ? (physicsCount / total * 100).toFixed(1) : 0}%)</span>
-              </div>
-              <div style="text-align: center;">
-                <div style="width: 20px; height: 20px; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></div>
-                <span>历史方向: ${historyCount} 人 (${total > 0 ? (historyCount / total * 100).toFixed(1) : 0}%)</span>
-              </div>
-            </div>
-          `;
+          safeDOM.empty(container);
+          
+          // 创建表格包装器
+          const tableWrapper = safeDOM.createElement('div', {
+            className: 'table-wrapper'
+          });
+          
+          const table = document.createElement('table');
+          
+          // 创建表头
+          const thead = document.createElement('thead');
+          const headerRow = safeDOM.createElement('tr', {
+            children: [
+              safeDOM.createElement('th', { 
+                text: '排名',
+                attrs: { style: 'width: 50px;' }
+              }),
+              safeDOM.createElement('th', { text: '选科组合' }),
+              safeDOM.createElement('th', { 
+                text: '方向',
+                attrs: { style: 'width: 100px;' }
+              }),
+              safeDOM.createElement('th', { 
+                text: '人数',
+                attrs: { style: 'width: 100px;' }
+              }),
+              safeDOM.createElement('th', { 
+                text: '占比',
+                attrs: { style: 'width: 200px;' }
+              })
+            ]
+          });
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+          
+          // 创建表体
+          const tbody = document.createElement('tbody');
+          combinations.forEach((c, i) => {
+            const percent = total > 0 ? (c.count / total * 100).toFixed(1) : 0;
+            const barWidth = maxCount > 0 ? (c.count / maxCount * 100) : 0;
+            const isPhysics = c.physicsHistory === '物理';
+            
+            const row = safeDOM.createElement('tr', {
+              children: [
+                safeDOM.createElement('td', {
+                  text: String(i + 1),
+                  attrs: { style: 'text-align: center; font-weight: 600;' }
+                }),
+                safeDOM.createElement('td', {
+                  children: [safeDOM.createElement('strong', {
+                    text: c.combination,
+                    attrs: { style: 'font-size: 1.1rem;' }
+                  })]
+                }),
+                safeDOM.createElement('td', {
+                  children: [safeDOM.createElement('span', {
+                    className: isPhysics ? 'badge badge-info' : 'badge badge-warning',
+                    text: (isPhysics ? '物理' : '历史') + '方向'
+                  })]
+                }),
+                safeDOM.createElement('td', {
+                  attrs: { style: 'text-align: center;' },
+                  children: [
+                    safeDOM.createElement('strong', {
+                      text: String(c.count),
+                      attrs: { style: 'font-size: 1.2rem;' }
+                    }),
+                    document.createTextNode(' '),
+                    safeDOM.createElement('span', {
+                      text: '人',
+                      attrs: { style: 'color: var(--text-muted);' }
+                    })
+                  ]
+                }),
+                safeDOM.createElement('td', {
+                  children: [
+                    safeDOM.createElement('div', {
+                      attrs: { style: 'display: flex; align-items: center; gap: 0.5rem;' },
+                      children: [
+                        safeDOM.createElement('div', {
+                          attrs: { 
+                            style: `flex: 0 0 ${barWidth}%; height: 24px; background: linear-gradient(90deg, ${isPhysics ? '#3b82f6, #60a5fa' : '#f59e0b, #fbbf24'}); border-radius: 4px; min-width: 2px;`
+                          }
+                        }),
+                        safeDOM.createElement('span', {
+                          text: `${percent}%`,
+                          attrs: { style: 'font-weight: 600; min-width: 50px;' }
+                        })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            });
+            tbody.appendChild(row);
+          });
+          table.appendChild(tbody);
+          tableWrapper.appendChild(table);
+          container.appendChild(tableWrapper);
+          
+          // 添加统计摘要
+          const summary = safeDOM.createElement('div', {
+            className: 'mt-4',
+            attrs: { style: 'display: flex; gap: 2rem; justify-content: center;' },
+            children: [
+              safeDOM.createElement('div', {
+                attrs: { style: 'text-align: center;' },
+                children: [
+                  safeDOM.createElement('div', {
+                    attrs: {
+                      style: 'width: 20px; height: 20px; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;'
+                    }
+                  }),
+                  safeDOM.createElement('span', {
+                    text: `物理方向: ${physicsCount} 人 (${total > 0 ? (physicsCount / total * 100).toFixed(1) : 0}%)`
+                  })
+                ]
+              }),
+              safeDOM.createElement('div', {
+                attrs: { style: 'text-align: center;' },
+                children: [
+                  safeDOM.createElement('div', {
+                    attrs: {
+                      style: 'width: 20px; height: 20px; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 0.5rem;'
+                    }
+                  }),
+                  safeDOM.createElement('span', {
+                    text: `历史方向: ${historyCount} 人 (${total > 0 ? (historyCount / total * 100).toFixed(1) : 0}%)`
+                  })
+                ]
+              })
+            ]
+          });
+          container.appendChild(summary);
         } else {
-          container.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 2rem;">加载失败: ' + result.message + '</p>';
+          safeDOM.setText(container, '加载失败');
+          container.style.cssText = 'text-align: center; color: var(--danger); padding: 2rem;';
         }
       } catch (err) {
         console.error('加载组合统计错误:', err);
-        container.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 2rem;">加载失败</p>';
+        const container = document.getElementById('combinationStats');
+        safeDOM.setText(container, '加载失败');
+        container.style.cssText = 'text-align: center; color: var(--danger); padding: 2rem;';
       }
     }
 
@@ -1240,13 +1447,24 @@
             closeImportModal();
           }, 2000);
         } else {
-          resultDiv.innerHTML = `<div class="alert" style="background: var(--danger); color: white; padding: 1rem; border-radius: 8px;">
-            <strong>❌ 导入失败</strong><br>${result.message}
-          </div>`;
-          resultDiv.style.display = 'block';
-          btn.disabled = false;
-          btn.textContent = '开始导入';
+          const resultDiv = document.getElementById('importResult');
+          safeDOM.empty(resultDiv);
+          
+          const errorDiv = safeDOM.createElement('div', {
+            className: 'alert',
+            attrs: {
+              style: 'background: var(--danger); color: white; padding: 1rem; border-radius: 8px;'
+            },
+            children: [
+              safeDOM.createElement('strong', { text: '✗ 导入失败' }),
+              safeDOM.createElement('p', { text: result.message || '未知错误' })
+            ]
+          });
+          resultDiv.appendChild(errorDiv);
         }
+        resultDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '开始导入';
       } catch (err) {
         console.error('导入错误:', err);
         alert('导入失败: ' + err.message);

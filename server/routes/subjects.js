@@ -3,7 +3,14 @@ const router = express.Router();
 const { success, error, notFound } = require('../utils/response');
 const { projectDb } = require('../middleware/projectDb');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'student-selection-secret-key-2024';
+
+// JWT_SECRET必须在环境变量中配置
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ 致命错误: JWT_SECRET未配置！');
+  console.error('   请在.env文件中设置JWT_SECRET环境变量');
+  process.exit(1);
+}
 
 /**
  * 项目级认证中间件（用于subjects路由）

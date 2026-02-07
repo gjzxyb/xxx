@@ -6,6 +6,7 @@
   <title>选科 - 分科自选系统</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/safeDOM.js"></script>
 </head>
 <body>
   <div class="page-wrapper">
@@ -260,8 +261,15 @@
       const phSubjects = subjects.filter(s => s.category === 'physics_history');
       const elSubjects = subjects.filter(s => s.category === 'four_electives');
 
-      phGrid.innerHTML = phSubjects.map(s => createSubjectCard(s, 'ph')).join('');
-      elGrid.innerHTML = elSubjects.map(s => createSubjectCard(s, 'el')).join('');
+      safeDOM.empty(phGrid);
+      phSubjects.forEach(s => {
+        phGrid.appendChild(createSubjectCard(s, 'ph'));
+      });
+      
+      safeDOM.empty(elGrid);
+      elSubjects.forEach(s => {
+        elGrid.appendChild(createSubjectCard(s, 'el'));
+      });
 
       // 绑定点击事件
       document.querySelectorAll('.subject-card').forEach(card => {

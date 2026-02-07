@@ -6,6 +6,7 @@
   <title>我的项目 - 分科自选 SaaS 平台</title>
   <link rel="stylesheet" href="/css/style.css?v=2">
   <link rel="stylesheet" href="/platform/css/dashboard.css?v=2">
+  <script src="/js/safeDOM.js"></script>
 </head>
 <body>
   <div class="dashboard-layout">
@@ -253,15 +254,77 @@
           const allProjects = [...owned.map(p => ({...p, type: 'owned'})), ...collaborated.map(p => ({...p, type: 'collab'}))];
 
           if (allProjects.length === 0) {
-            document.getElementById('projectList').innerHTML = `
-              <div class="empty-state" style="grid-column: 1/-1;">
-                <div class="empty-icon">🚀</div>
-                <h3>开始您的第一个项目</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">您还没有创建任何分科系统项目。</p>
-                <button class="btn btn-primary" onclick="showCreateProjectModal()">创建项目</button>
-              </div>
-            `;
-            return;
+            const projectList = document.getElementById('projectList');
+            safeDOM.empty(projectList);
+            const emptyMsg = safeDOM.createElement('div', {
+              className: 'empty-state',
+              children: [
+                safeDOM.createElement('p', { text: '还没有项目' }),
+                safeDOM.createElement('p', { text: '点击右上角"新建项目"开始创建您的第一个项目' })
+              ]
+            });
+            emptyMsg.style.cssText = 'text-align: center; padding: 4rem; color: var(--text-muted);';
+            projectList.appendChild(emptyMsg);
+          } else {
+            const projectList = document.getElementById('projectList');
+            safeDOM.empty(projectList);
+            allProjects.forEach(p => {
+              const statusClass = p.status === 'running' ? 'status-active' : 'status-inactive';
+              const statusText = p.status === 'running' ? '运行中' : p.status === 'paused' ? '已暂停' : '已归档';
+              
+              const card = safeDOM.createElement('div', {
+                className: 'project-card',
+                children: [
+                  safeDOM.createElement('div', {
+                    className: 'project-header',
+                    children: [
+                      safeDOM.createElement('h3', { text: p.name }),
+                      safeDOM.createElement('span', {
+                        className: `status-badge ${statusClass}`,
+                        text: statusText
+                      })
+                    ]
+                  }),
+                  safeDOM.createElement('div', {
+                    className: 'project-body',
+                    children: [
+                      safeDOM.createElement('p', { text: p.description || '暂无描述' }),
+                      safeDOM.createElement('div', {
+                        className: 'project-stats',
+                        children: [
+                          safeDOM.createElement('span', { text: `👥 ${p.studentCount || 0} 学生` }),
+                          safeDOM.createElement('span', { text: `📝 ${p.selectionCount || 0} 已选科` })
+                        ]
+                      })
+                    ]
+                  }),
+                  safeDOM.createElement('div', {
+                    className: 'project-footer',
+                    children: [
+                      safeDOM.createElement('button', {
+                        className: 'btn btn-primary',
+                        text: '进入管理',
+                        on: {
+                          click: () => {
+                            window.location.href = `/admin.html?projectId=${p.id}`;
+                          }
+                        }
+                      }),
+                      safeDOM.createElement('button', {
+                        className: 'btn btn-secondary',
+                        text: '设置',
+                        on: {
+                          click: () => {
+                            window.location.href = `/platform/project-settings.html?id=${p.id}`;
+                          }
+                        }
+                      })
+                    ]
+                  })
+                ]
+              });
+              projectList.appendChild(card);
+            });
           }
 
           document.getElementById('projectList').innerHTML = allProjects.map(p => `

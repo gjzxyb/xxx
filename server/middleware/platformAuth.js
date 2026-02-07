@@ -2,7 +2,13 @@ const jwt = require('jsonwebtoken');
 const { PlatformUser } = require('../models');
 const tokenBlacklist = require('../lib/TokenBlacklist');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// JWT_SECRET必须在环境变量中配置
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ 致命错误: JWT_SECRET未配置！');
+  console.error('   请在.env文件中设置JWT_SECRET环境变量');
+  process.exit(1);
+}
 
 /**
  * 平台用户认证中间件 - 验证JWT token

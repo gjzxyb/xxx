@@ -6,6 +6,7 @@
   <title>学生中心 - 分科自选系统</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/safeDOM.js"></script>
 </head>
 <body>
   <div class="page-wrapper">
@@ -160,57 +161,69 @@
       const content = document.getElementById('selectionContent');
       const result = await api.selections.getMy();
 
-      if (result.code === 200 && result.data) {
-        const sel = result.data;
-
-        // 更新统计
-        document.getElementById('statPhysicsHistory').textContent = sel.physicsHistorySubject?.name || '-';
-        document.getElementById('statElectives').textContent =
-          (sel.electiveOneSubject?.name || '-') + ' + ' + (sel.electiveTwoSubject?.name || '-');
-
-        const statusMap = {
-          'draft': '草稿',
-          'submitted': '已提交',
-          'confirmed': '已确认',
-          'cancelled': '已取消'
-        };
-        document.getElementById('statStatus').textContent = statusMap[sel.status] || sel.status;
-        document.getElementById('goSelectBtn').textContent = '修改选科';
-
-        content.innerHTML = `
-          <div class="selection-summary">
-            <div class="selection-summary-title">已选科目组合</div>
-            <div class="selection-items">
-              <div class="selection-item">
-                <span class="selection-item-label">首选:</span>
-                <span class="selection-item-value">${sel.physicsHistorySubject?.name || '未选'}</span>
-              </div>
-              <div class="selection-item">
-                <span class="selection-item-label">再选1:</span>
-                <span class="selection-item-value">${sel.electiveOneSubject?.name || '未选'}</span>
-              </div>
-              <div class="selection-item">
-                <span class="selection-item-label">再选2:</span>
-                <span class="selection-item-value">${sel.electiveTwoSubject?.name || '未选'}</span>
-              </div>
-            </div>
-          </div>
-          <p style="color: var(--text-muted); font-size: 0.9rem;">
-            提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
-          </p>
-        `;
-      } else {
-        document.getElementById('statPhysicsHistory').textContent = '未选';
-        document.getElementById('statElectives').textContent = '未选';
-        document.getElementById('statStatus').textContent = '未提交';
-
-        content.innerHTML = `
-          <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-            <p style="font-size: 3rem; margin-bottom: 1rem;">📝</p>
-            <p>您还未提交选科，请点击右上角"去选科"按钮开始选择。</p>
-          </div>
-        `;
-      }
+        if (result.code === 200 && result.data) {
+          const content = document.getElementById('selectionContent');
+          safeDOM.empty(content);
+          
+          const sel = result.data;
+          const card = safeDOM.createElement('div', {
+            className: 'card',
+            children: [
+              safeDOM.createElement('h2', { text: '已选科目' }),
+              safeDOM.createElement('div', {
+                className: 'selection-display',
+                children: [
+                  safeDOM.createElement('div', {
+                    className: 'subject-item physics-history',
+                    children: [
+                      safeDOM.createElement('label', { text: '首选科目' }),
+                      safeDOM.createElement('div', {
+                        className: 'value',
+                        text: sel.physicsHistorySubject?.name || '-'
+                      })
+                    ]
+                  }),
+                  safeDOM.createElement('div', {
+                    className: 'subject-item electives',
+                    children: [
+                      safeDOM.createElement('label', { text: '再选科目' }),
+                      safeDOM.createElement('div', {
+                        className: 'value',
+                        text: `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`
+                      })
+                    ]
+                  }),
+                  safeDOM.createElement('div', {
+                    className: 'submit-time',
+                    text: `提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}`
+                  })
+                ]
+              }),
+              safeDOM.createElement('a', {
+                attrs: { href: 'selection.html' },
+                className: 'btn btn-secondary',
+                text: '修改选科'
+              })
+            ]
+          });
+          content.appendChild(card);
+        } else {
+          const content = document.getElementById('selectionContent');
+          safeDOM.empty(content);
+          
+          const card = safeDOM.createElement('div', {
+            className: 'card text-center',
+            children: [
+              safeDOM.createElement('p', { text: '您还未进行选科' }),
+              safeDOM.createElement('a', {
+                attrs: { href: 'selection.html' },
+                className: 'btn btn-primary',
+                text: '开始选科'
+              })
+            ]
+          });
+          content.appendChild(card);
+        }
     }
 
     // 初始化

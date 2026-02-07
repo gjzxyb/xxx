@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>超级管理员 - 分科自选 SaaS 平台</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/safeDOM.js"></script>
   <style>
     .btn-warning {
       background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
@@ -447,15 +448,60 @@
         const result = await response.json();
 
         if (result.code === 200) {
-          const usersHtml = result.data.users.map(u => {
-            let statusBadge = '';
-            if (u.isSuperAdmin) {
-              statusBadge = '<span class="status-badge status-admin">超级管理员</span>';
-            } else if (u.isDisabled) {
-              statusBadge = '<span class="status-badge status-disabled">已禁用</span>';
-            } else {
-              statusBadge = '<span class="status-badge status-enabled">正常</span>';
-            }
+          const users = result.data;
+          document.getElementById('totalUsers').textContent = users.length;
+          document.getElementById('totalAdmins').textContent = users.filter(u => u.isSuperAdmin).length;
+          
+          const tbody = document.getElementById('usersTable');
+          safeDOM.empty(tbody);
+          
+          users.forEach(user => {
+            const tr = safeDOM.createElement('tr', {
+              children: [
+                safeDOM.createElement('td', { text: user.email }),
+                safeDOM.createElement('td', { text: user.name }),
+                safeDOM.createElement('td', {
+                  children: [safeDOM.createElement('span', {
+                    className: user.isSuperAdmin ? 'badge badge-danger' : 'badge badge-primary',
+                    text: user.isSuperAdmin ? '超级管理员' : '普通用户'
+                  })]
+                }),
+                safeDOM.createElement('td', { text: user.maxProjects || '-' }),
+                safeDOM.createElement('td', { text: user.projectCount || 0 }),
+                safeDOM.createElement('td', {
+                  children: [safeDOM.createElement('span', {
+                    className: user.isDisabled ? 'badge badge-secondary' : 'badge badge-success',
+                    text: user.isDisabled ? '已禁用' : '正常'
+                  })]
+                }),
+                safeDOM.createElement('td', {
+                  children: [
+                    safeDOM.createElement('div', {
+                      className: 'flex gap-1',
+                      children: [
+                        safeDOM.createElement('button', {
+                          className: 'btn btn-sm btn-secondary',
+                          text: '编辑',
+                          on: { click: () => editUser(user.id) }
+                        }),
+                        safeDOM.createElement('button', {
+                          className: user.isDisabled ? 'btn btn-sm btn-success' : 'btn btn-sm btn-warning',
+                          text: user.isDisabled ? '启用' : '禁用',
+                          on: { click: () => toggleUserStatus(user.id, user.isDisabled) }
+                        })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            });
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (error) {
+        console.error('加载用户列表失败:', error);
+      }
+    }
 
             let actionButtons = `
               <button class="btn btn-sm btn-primary" onclick="editUser(${u.id}, '${u.email}', '${u.name}', ${u.maxProjects})">编辑</button>
