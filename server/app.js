@@ -1,5 +1,9 @@
+// 加载环境变量配置（必须在最开头）
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 
@@ -15,6 +19,10 @@ const platformAuthRoutes = require('./routes/platformAuth');
 const projectsRoutes = require('./routes/projects');
 const superadminRoutes = require('./routes/superadmin');
 
+// 安全中间件
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -24,14 +32,69 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// 中间件
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+// ============================================
+// 安全中间件配置
+// ============================================
+
+// Helmet - 设置安全HTTP响应头
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// CORS配置 - 限制允许的来源，避免跨站攻击
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : (process.env.NODE_ENV === 'production' 
+      ? [] // 生产环境必须明确指定
+      : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000']); // 开发环境默认本地
+
+if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+  console.error('❌ 严重错误: 生产环境必须设置ALLOWED_ORIGINS环境变量！');
+  process.exit(1);
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // 允许无origin的请求（如移动应用、Postman等）
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      if (process.env.NODE_ENV === 'production') {
+        callback(new Error(`来源 ${origin} 不在允许列表中`));
+      } else {
+        console.warn(`⚠️  警告: 来源 ${origin} 不在允许列表中，但开发环境允许访问`);
+        callback(null, true);
+      }
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // 24小时
+}));
+app.use(express.json({ limit: '10mb' })); // 限制请求体大小
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ============================================
+// 速率限制
+// ============================================
+
+// 应用通用API速率限制
+app.use('/api/', apiLimiter);
+
+// 认证接口使用更严格的速率限制
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/platform/auth/login', authLimiter);
+app.use('/api/platform/auth/register', authLimiter);
+
+// ============================================
+// 静态文件服务
+// ============================================
 
 // 静态文件服务（选科系统前端）
 app.use(express.static(path.join(__dirname, '../client')));
@@ -59,10 +122,15 @@ app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: 'Server is running', data: { time: new Date().toISOString() } });
 });
 
-// 前端路由回退
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/index.html'));
-});
+// ============================================
+// 错误处理
+// ============================================
+
+// 404错误处理
+app.use(notFound);
+
+// 统一错误处理中间件（必须放在最后）
+app.use(errorHandler);
 
 // 初始化数据
 async function initializeData() {
@@ -71,21 +139,40 @@ async function initializeData() {
   // 这样可以确保每个项目有独立的管理员账号和密码
 
   // 创建超级管理员（平台）
+  // 安全性：使用环境变量或随机生成的密码，避免硬编码
   const superAdminCount = await PlatformUser.count({
     where: { isSuperAdmin: true }
   });
 
   if (superAdminCount === 0) {
+    const crypto = require('crypto');
+    
+    // 从环境变量获取管理员配置，如果没有则生成随机密码
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@platform.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || (() => {
+      const randomPassword = crypto.randomBytes(16).toString('base64').slice(0, 16);
+      console.warn('⚠️  警告: 未设置ADMIN_PASSWORD环境变量，已生成随机密码');
+      console.warn('⚠️  请立即登录并修改密码！');
+      return randomPassword;
+    })();
+
     await PlatformUser.create({
-      email: 'admin@platform.com',
-      password: 'admin123',
-      name: '超级管理员',
+      email: adminEmail,
+      password: adminPassword,
+      name: process.env.ADMIN_NAME || '超级管理员',
       isSuperAdmin: true,
       maxProjects: 999
     });
+    
     console.log('✓ 默认超级管理员已创建');
-    console.log('  邮箱: admin@platform.com');
-    console.log('  密码: admin123');
+    console.log('  邮箱:', adminEmail);
+    console.log('  密码:', adminPassword);
+    console.log('');
+    console.log('🔐 安全提示:');
+    console.log('  1. 请立即登录系统并修改默认密码');
+    console.log('  2. 建议在.env文件中设置ADMIN_EMAIL和ADMIN_PASSWORD');
+    console.log('  3. 生产环境务必使用强密码');
+    console.log('');
   }
 
   // 创建默认科目 (3+1+2模式) - 仅全局配置，项目可自行管理
@@ -139,8 +226,8 @@ async function startServer() {
       console.log(`  平台管理: http://localhost:${PORT}/platform`);
       console.log(`  API地址:  http://localhost:${PORT}/api`);
       console.log('----------------------------------------');
-      console.log('  选科管理: admin / admin123');
-      console.log('  超级管理: admin@platform.com / admin123');
+      console.log('  请使用您在.env中配置的管理员账号登录');
+      console.log('  如未配置，请查看上方的初始化信息');
       console.log('========================================');
     });
   } catch (err) {

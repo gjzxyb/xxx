@@ -1,11 +1,25 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { unauthorized, forbidden } = require('../utils/response');
+const crypto = require('crypto');
+const tokenBlacklist = require('../lib/TokenBlacklist');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'student-selection-secret-key-2024';
+// 安全性：必须设置JWT_SECRET环境变量，生产环境禁止使用默认值
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ 严重错误: 生产环境必须设置JWT_SECRET环境变量！');
+    process.exit(1);
+  }
+  // 开发环境：生成临时随机密钥并警告
+  const tempSecret = crypto.randomBytes(32).toString('hex');
+  console.warn('⚠️  警告: 未设置JWT_SECRET环境变量，使用临时随机密钥');
+  console.warn('⚠️  请在.env文件中设置JWT_SECRET，否则服务器重启后所有token将失效');
+  return tempSecret;
+})();
 
 /**
  * JWT认证中间件
+ * 安全性：检查token黑名单
  */
 const authenticate = async (req, res, next) => {
   try {
@@ -23,6 +37,11 @@ const authenticate = async (req, res, next) => {
 
     if (!token) {
       return unauthorized(res, '请先登录');
+    }
+
+    // 安全性：检查token是否在黑名单中
+    if (tokenBlacklist.isBlacklisted(token)) {
+      return unauthorized(res, 'Token已失效，请重新登录');
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -55,12 +74,30 @@ const requireAdmin = (req, res, next) => {
 
 /**
  * 生成JWT Token
+ * 安全性：缩短token有效期，建议实施refresh token机制
  */
 const generateToken = (user) => {
+  // 访问令牌有效期：从环境变量读取，默认2小时
+  const accessTokenExpiry = process.env.JWT_ACCESS_EXPIRY || '2h';
+  
   return jwt.sign(
     { userId: user.id, role: user.role },
     JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: accessTokenExpiry }
+  );
+};
+
+/**
+ * 生成刷新令牌（可选实现）
+ * Refresh Token用于在访问令牌过期后获取新的访问令牌
+ */
+const generateRefreshToken = (user) => {
+  const refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRY || '7d';
+  
+  return jwt.sign(
+    { userId: user.id, type: 'refresh' },
+    JWT_SECRET,
+    { expiresIn: refreshTokenExpiry }
   );
 };
 
@@ -68,5 +105,6 @@ module.exports = {
   authenticate,
   requireAdmin,
   generateToken,
+  generateRefreshToken,
   JWT_SECRET
 };

@@ -3,8 +3,16 @@ const router = express.Router();
 const { PlatformUser, SystemConfig } = require('../models');
 const { generatePlatformToken } = require('../middleware/platformAuth');
 const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
+const loginAttemptTracker = require('../lib/LoginAttemptTracker');
+const tokenBlacklist = require('../lib/TokenBlacklist');
+const jwt = require('jsonwebtoken');
 
-// 验证码存储（简单内存存储，生产环境应使用 Redis）
+// 验证码存储（简单内存存储）
+// ⚠️  警告：此实现不支持多实例部署
+// 生产环境建议：
+// 1. 使用 Redis 或其他分布式缓存存储验证码
+// 2. 设置合理的过期时间和清理策略
+// 3. 考虑使用更复杂的验证码类型（图片验证码等）
 const captchaStore = new Map();
 
 // 生成数学验证码
@@ -89,20 +97,78 @@ router.get('/captcha', async (req, res) => {
 });
 
 /**
- * 获取密码策略配置
- * GET /api/platform/auth/password-policy
+ * 平台用户登录
+ * POST /api/platform/auth/login
+ * 安全性：添加登录失败锁定机制
  */
-router.get('/password-policy', async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    const policy = getPasswordPolicy();
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ code: 400, message: '邮箱和密码不能为空' });
+    }
+
+    // 安全性：检查账号是否被锁定
+    const lockIdentifier = `platform:${email}`;
+    const locked = loginAttemptTracker.isLocked(lockIdentifier);
+    if (locked) {
+      return res.status(423).json({
+        code: 423,
+        message: locked.message,
+        lockedUntil: locked.lockedUntil
+      });
+    }
+
+    // 查找用户
+    const user = await PlatformUser.findOne({ where: { email } });
+    if (!user) {
+      // 安全性：记录失败尝试
+      const result = loginAttemptTracker.recordFailure(lockIdentifier);
+      return res.status(result.locked ? 423 : 401).json({
+        code: result.locked ? 423 : 401,
+        message: result.message,
+        remainingAttempts: result.remainingAttempts,
+        lockedUntil: result.lockedUntil
+      });
+    }
+
+    // 验证密码
+    const isValid = await user.comparePassword(password);
+    if (!isValid) {
+      // 安全性：记录失败尝试
+      const result = loginAttemptTracker.recordFailure(lockIdentifier);
+      return res.status(result.locked ? 423 : 401).json({
+        code: result.locked ? 423 : 401,
+        message: result.message,
+        remainingAttempts: result.remainingAttempts,
+        lockedUntil: result.lockedUntil
+      });
+    }
+
+    // 安全性：登录成功，清除失败记录
+    loginAttemptTracker.recordSuccess(lockIdentifier);
+
+    // 生成token
+    const token = generatePlatformToken(user);
+
     res.json({
       code: 200,
-      message: '操作成功',
-      data: policy
+      message: '登录成功',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          isSuperAdmin: user.isSuperAdmin,
+          maxProjects: user.maxProjects
+        }
+      }
     });
-  } catch (err) {
-    console.error('获取密码策略错误:', err);
-    res.status(500).json({ code: 500, message: '获取密码策略失败' });
+  } catch (error) {
+    console.error('平台用户登录错误:', error.message);
+    res.status(500).json({ code: 500, message: '登录失败' });
   }
 });
 
@@ -197,58 +263,6 @@ router.post('/register', validatePasswordMiddleware, async (req, res) => {
 });
 
 /**
- * 平台用户登录
- * POST /api/platform/auth/login
- */
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ code: 400, message: '邮箱和密码不能为空' });
-    }
-
-    // 查找用户
-    const user = await PlatformUser.findOne({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ code: 401, message: '邮箱或密码错误' });
-    }
-
-    // 检查用户是否被禁用
-    if (user.isDisabled) {
-      return res.status(403).json({ code: 403, message: '账号已被禁用，请联系管理员' });
-    }
-
-    // 验证密码
-    const isValidPassword = await user.comparePassword(password);
-    if (!isValidPassword) {
-      return res.status(401).json({ code: 401, message: '邮箱或密码错误' });
-    }
-
-    // 生成token
-    const token = generatePlatformToken(user.id);
-
-    res.json({
-      code: 200,
-      message: '登录成功',
-      data: {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          maxProjects: user.maxProjects,
-          isSuperAdmin: user.isSuperAdmin
-        }
-      }
-    });
-  } catch (error) {
-    console.error('登录错误:', error);
-    res.status(500).json({ code: 500, message: '登录失败' });
-  }
-});
-
-/**
  * 获取当前平台用户信息
  * GET /api/platform/auth/me
  */
@@ -263,6 +277,30 @@ router.get('/me', require('../middleware/platformAuth').authenticatePlatform, as
       isSuperAdmin: req.user.isSuperAdmin
     }
   });
+});
+
+/**
+ * 平台用户登出
+ * POST /api/platform/auth/logout
+ * 安全性：将token加入黑名单，实现即时失效
+ */
+router.post('/logout', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const decoded = jwt.decode(token);
+      
+      if (decoded && decoded.exp) {
+        tokenBlacklist.add(token, decoded.exp * 1000);
+      }
+    }
+
+    res.json({ code: 200, message: '登出成功' });
+  } catch (error) {
+    console.error('登出错误:', error.message);
+    res.status(500).json({ code: 500, message: '登出失败' });
+  }
 });
 
 module.exports = router;

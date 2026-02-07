@@ -157,47 +157,72 @@ router.post('/import-students', authenticateProject, requireProjectAdmin, async 
       return error(res, '导入数据不能为空');
     }
 
-    let successCount = 0;
-    let failed = 0;
-    const errors = [];
+    // 获取 sequelize 实例用于事务处理
+    const sequelize = User.sequelize;
+    const transaction = await sequelize.transaction();
 
-    for (const student of students) {
-      try {
-        const { studentId, name, className, password } = student;
+    try {
+      let successCount = 0;
+      const errors = [];
+
+      // 数据验证阶段
+      for (const student of students) {
+        const { studentId, name } = student;
 
         if (!studentId || !name) {
           errors.push(`学号 ${studentId || '未知'}: 学号和姓名不能为空`);
-          failed++;
           continue;
         }
 
-        const existingStudent = await User.findOne({ where: { studentId, role: 'student' } });
+        const existingStudent = await User.findOne({ 
+          where: { studentId, role: 'student' },
+          transaction 
+        });
+        
         if (existingStudent) {
           errors.push(`学号 ${studentId}: 已存在`);
-          failed++;
-          continue;
         }
+      }
 
+      // 如果有验证错误，回滚事务
+      if (errors.length > 0) {
+        await transaction.rollback();
+        return res.json({
+          code: 400,
+          data: { success: 0, failed: errors.length, errors },
+          message: `数据验证失败，共 ${errors.length} 条错误`
+        });
+      }
+
+      // 批量创建用户
+      for (const student of students) {
+        const { studentId, name, className, password } = student;
+        
         await User.create({
           studentId,
           name,
           className,
           password: password || studentId,
           role: 'student'
-        });
+        }, { transaction });
 
         successCount++;
-      } catch (err) {
-        errors.push(`学号 ${student.studentId || '未知'}: ${err.message}`);
-        failed++;
       }
-    }
 
-    res.json({
-      code: 200,
-      data: { success: successCount, failed, errors },
-      message: `导入完成，成功 ${successCount} 人，失败 ${failed} 人`
-    });
+      // 提交事务
+      await transaction.commit();
+
+      res.json({
+        code: 200,
+        data: { success: successCount, failed: 0, errors: [] },
+        message: `导入完成，成功导入 ${successCount} 人`
+      });
+    } catch (err) {
+      // 回滚事务
+      await transaction.rollback();
+      console.error('批量导入事务失败:', err);
+      error(res, '导入失败，数据已回滚', 500);
+    }
   } catch (err) {
     console.error('批量导入失败:', err);
     error(res, '导入失败', 500);

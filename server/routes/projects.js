@@ -24,20 +24,31 @@ function checkSelectionOpen(project) {
 /**
  * 获取所有公开项目（无需认证）
  * GET /api/projects/public
+ * 安全性：只返回必要的公开信息，隐藏敏感字段
  */
 router.get('/public', async (req, res) => {
   try {
+    // 只返回状态为 'running' 的项目，且只暴露最少信息
     const projects = await Project.findAll({
-      attributes: ['id', 'name', 'description', 'status'],
-      order: [['createdAt', 'DESC']]
+      attributes: ['id', 'name', 'status'], // 移除 description，减少信息泄露
+      where: { status: 'running' }, // 只显示运行中的项目
+      order: [['createdAt', 'DESC']],
+      limit: 50 // 限制返回数量，防止信息收集
     });
+
+    // 进一步脱敏处理
+    const sanitizedProjects = projects.map(p => ({
+      id: p.id,
+      name: p.name,
+      // 不返回详细描述和其他敏感信息
+    }));
 
     res.json({
       code: 200,
-      data: projects
+      data: sanitizedProjects
     });
   } catch (error) {
-    console.error('获取公开项目列表错误:', error);
+    console.error('获取公开项目列表错误:', error.message);
     res.status(500).json({ code: 500, message: '获取项目列表失败' });
   }
 });

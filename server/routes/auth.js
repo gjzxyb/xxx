@@ -4,10 +4,14 @@ const { User } = require('../models');
 const { success, error } = require('../utils/response');
 const { authenticate, generateToken } = require('../middleware/auth');
 const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
+const loginAttemptTracker = require('../lib/LoginAttemptTracker');
+const tokenBlacklist = require('../lib/TokenBlacklist');
+const jwt = require('jsonwebtoken');
 
 /**
  * 用户登录
  * POST /api/auth/login
+ * 安全性：添加登录失败锁定机制
  */
 router.post('/login', async (req, res) => {
   try {
@@ -19,6 +23,17 @@ router.post('/login', async (req, res) => {
 
     if (!projectId) {
       return error(res, '缺少项目信息', 400);
+    }
+
+    // 安全性：检查账号是否被锁定
+    const lockIdentifier = `${projectId}:${studentId}`;
+    const locked = loginAttemptTracker.isLocked(lockIdentifier);
+    if (locked) {
+      return res.status(423).json({
+        code: 423,
+        message: locked.message,
+        lockedUntil: locked.lockedUntil
+      });
     }
 
     // 使用项目数据库查询用户
@@ -33,13 +48,30 @@ router.post('/login', async (req, res) => {
 
     const user = await User.findOne({ where: { studentId } });
     if (!user) {
-      return error(res, '学号或密码错误');
+      // 安全性：记录失败尝试
+      const result = loginAttemptTracker.recordFailure(lockIdentifier);
+      return res.status(result.locked ? 423 : 401).json({
+        code: result.locked ? 423 : 401,
+        message: result.message,
+        remainingAttempts: result.remainingAttempts,
+        lockedUntil: result.lockedUntil
+      });
     }
 
     const isValid = await user.validatePassword(password);
     if (!isValid) {
-      return error(res, '学号或密码错误');
+      // 安全性：记录失败尝试
+      const result = loginAttemptTracker.recordFailure(lockIdentifier);
+      return res.status(result.locked ? 423 : 401).json({
+        code: result.locked ? 423 : 401,
+        message: result.message,
+        remainingAttempts: result.remainingAttempts,
+        lockedUntil: result.lockedUntil
+      });
     }
+
+    // 安全性：登录成功，清除失败记录
+    loginAttemptTracker.recordSuccess(lockIdentifier);
 
     // 生成 token，包含 projectId
     const token = generateToken({ ...user.toJSON(), projectId });
@@ -67,19 +99,33 @@ router.post('/register', validatePasswordMiddleware, async (req, res) => {
       return error(res, '注册功能已关闭，请联系管理员', 403);
     }
 
-    const { studentId, name, password, className, phone } = req.body;
+    const { studentId, name, password, className, phone, projectId } = req.body;
 
     if (!studentId || !name || !password) {
       return error(res, '请填写必要信息（学号、姓名、密码）');
     }
 
-    // 检查学号是否已存在
-    const existing = await User.findOne({ where: { studentId } });
+    if (!projectId) {
+      return error(res, '缺少项目信息', 400);
+    }
+
+    // 使用项目数据库查询和创建用户
+    const dbManager = require('../lib/DatabaseManager');
+
+    if (!dbManager.projectDbExists(projectId)) {
+      return error(res, '项目不存在', 404);
+    }
+
+    const projectModels = await dbManager.getProjectModels(projectId);
+    const { User: ProjectUser } = projectModels;
+
+    // 检查学号是否已存在（在项目数据库中）
+    const existing = await ProjectUser.findOne({ where: { studentId } });
     if (existing) {
       return error(res, '该学号已被注册');
     }
 
-    const user = await User.create({
+    const user = await ProjectUser.create({
       studentId,
       name,
       password,
@@ -179,6 +225,32 @@ router.get('/password-policy', async (req, res) => {
   } catch (err) {
     console.error('获取密码策略错误:', err);
     error(res, '获取密码策略失败', 500);
+  }
+});
+
+/**
+ * 用户登出
+ * POST /api/auth/logout
+ * 安全性：将token加入黑名单，实现即时失效
+ */
+router.post('/logout', authenticate, (req, res) => {
+  try {
+    // 从header获取token
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const decoded = jwt.decode(token);
+      
+      if (decoded && decoded.exp) {
+        // 将token加入黑名单，直到其自然过期
+        tokenBlacklist.add(token, decoded.exp * 1000);
+      }
+    }
+
+    success(res, null, '登出成功');
+  } catch (err) {
+    console.error('登出错误:', err);
+    error(res, '登出失败', 500);
   }
 });
 

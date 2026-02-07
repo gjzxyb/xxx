@@ -3,6 +3,7 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const { PlatformUser, Project, SystemConfig, Collaborator, User, Subject } = require('../models');
 const { authenticatePlatform, requireSuperAdmin } = require('../middleware/platformAuth');
+const { validatePagination } = require('../utils/validation');
 
 /**
  * 获取所有用户列表
@@ -10,8 +11,8 @@ const { authenticatePlatform, requireSuperAdmin } = require('../middleware/platf
  */
 router.get('/users', authenticatePlatform, requireSuperAdmin, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    // 使用验证工具进行参数验证和边界检查
+    const { page, limit } = validatePagination(req.query.page, req.query.limit);
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
 
@@ -122,7 +123,7 @@ router.put('/config', authenticatePlatform, requireSuperAdmin, async (req, res) 
     const updates = req.body;
 
     for (const [key, data] of Object.entries(updates)) {
-      await SystemConfig.setValue(key, null, data.value, data.description);
+      await SystemConfig.setValue(key, data.value, null, data.description);
     }
 
     res.json({
@@ -353,6 +354,77 @@ router.post('/users', authenticatePlatform, requireSuperAdmin, async (req, res) 
   } catch (error) {
     console.error('创建管理员错误:', error);
     res.status(500).json({ code: 500, message: '创建失败' });
+  }
+});
+
+/**
+ * 获取所有项目列表
+ * GET /api/platform/superadmin/projects
+ */
+router.get('/projects', authenticatePlatform, requireSuperAdmin, async (req, res) => {
+  try {
+    const projects = await Project.findAll({
+      order: [['createdAt', 'DESC']],
+      include: [{
+        model: PlatformUser,
+        as: 'owner',
+        attributes: ['id', 'email', 'name']
+      }]
+    });
+
+    // 为每个项目添加所有者邮箱
+    const projectsData = projects.map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      status: p.status,
+      registrationEnabled: p.registrationEnabled,
+      ownerEmail: p.owner ? p.owner.email : '-',
+      createdAt: p.createdAt
+    }));
+
+    res.json({
+      code: 200,
+      data: projectsData  // 直接返回数组，与前端期望一致
+    });
+  } catch (error) {
+    console.error('获取项目列表错误:', error);
+    res.status(500).json({ code: 500, message: '获取项目失败' });
+  }
+});
+
+/**
+ * 删除项目
+ * DELETE /api/platform/superadmin/projects/:projectId
+ */
+router.delete('/projects/:projectId', authenticatePlatform, requireSuperAdmin, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return res.status(404).json({ code: 404, message: '项目不存在' });
+    }
+
+    // 删除项目数据库文件
+    const dbManager = require('../lib/DatabaseManager');
+    if (dbManager.projectDbExists(projectId)) {
+      await dbManager.deleteProjectDatabase(projectId);
+    }
+
+    // 删除协作者记录
+    await Collaborator.destroy({ where: { projectId } });
+
+    // 删除项目记录
+    await project.destroy();
+
+    res.json({
+      code: 200,
+      message: '项目已删除'
+    });
+  } catch (error) {
+    console.error('删除项目错误:', error);
+    res.status(500).json({ code: 500, message: '删除项目失败' });
   }
 });
 

@@ -11,12 +11,20 @@ class DatabaseManager {
     this.platformDb = null;
     this.projectConnections = new Map(); // projectId -> Sequelize instance
     this.projectModels = new Map(); // projectId -> models object
-    this.connectionLimit = 10; // 最大同时打开的项目数据库连接数
+    
+    // 连接池限制：根据环境变量配置，默认值根据环境不同
+    // 开发环境：10，生产环境：50
+    this.connectionLimit = parseInt(process.env.DB_CONNECTION_LIMIT) || 
+                          (process.env.NODE_ENV === 'production' ? 50 : 10);
+    
     this.dbDir = path.join(__dirname, '..', 'databases');
     this.projectDbDir = path.join(this.dbDir, 'projects');
 
     // 确保目录存在
     this.ensureDirectories();
+    
+    // 连接池监控
+    this.setupConnectionMonitoring();
   }
 
   /**
@@ -29,6 +37,23 @@ class DatabaseManager {
     if (!fs.existsSync(this.projectDbDir)) {
       fs.mkdirSync(this.projectDbDir, { recursive: true });
     }
+  }
+
+  /**
+   * 设置连接池监控
+   */
+  setupConnectionMonitoring() {
+    // 每5分钟检查一次连接数
+    setInterval(() => {
+      const activeConnections = this.projectConnections.size;
+      if (activeConnections > this.connectionLimit * 0.8) {
+        console.warn(`⚠️  数据库连接数接近限制: ${activeConnections}/${this.connectionLimit}`);
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📊 活动数据库连接: ${activeConnections}`);
+      }
+    }, 5 * 60 * 1000);
   }
 
   /**

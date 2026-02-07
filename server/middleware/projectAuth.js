@@ -3,7 +3,16 @@
  * 用于需要在项目数据库中验证用户的路由
  */
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'student-selection-secret-key-2024';
+const crypto = require('crypto');
+
+// 安全性：不使用硬编码默认值，强制要求设置环境变量
+if (!process.env.JWT_SECRET) {
+  console.error('错误: 未设置JWT_SECRET环境变量');
+  console.error('请在.env文件中设置JWT_SECRET，否则服务器无法正常运行');
+  process.exit(1);
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * 项目级认证 - 在项目数据库中验证用户
