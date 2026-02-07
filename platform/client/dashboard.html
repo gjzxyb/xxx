@@ -123,7 +123,13 @@
         </div>
         <div class="form-group">
           <label class="form-label">管理员密码</label>
-          <input type="password" id="adminPassword" class="form-input" required placeholder="新密码（至少6位）">
+          <input type="password" id="adminPassword" class="form-input" required placeholder="请设置管理员密码">
+          <!-- 密码强度指示器容器 -->
+          <div id="adminPasswordStrengthContainer"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认密码</label>
+          <input type="password" id="adminPasswordConfirm" class="form-input" required placeholder="请再次输入密码">
         </div>
         <div class="flex justify-between" style="margin-top: 2rem;">
           <button type="button" class="btn btn-secondary" onclick="closeSecurityModal()">取消</button>
@@ -133,6 +139,7 @@
     </div>
   </div>
 
+  <script src="/js/passwordStrength.js"></script>
   <script>
     const token = localStorage.getItem('platform_token');
     const user = JSON.parse(localStorage.getItem('platform_user') || '{}');
@@ -343,15 +350,32 @@
     }
 
     // 安全设置弹窗
+    let adminPasswordStrength = null;
+    
     function showSecurityModal(projectId) {
       document.getElementById('securityProjectId').value = projectId;
       document.getElementById('adminUsername').value = '';
       document.getElementById('adminPassword').value = '';
+      document.getElementById('adminPasswordConfirm').value = '';
       document.getElementById('securityModal').classList.add('active');
+      
+      // 初始化密码强度指示器
+      setTimeout(() => {
+        adminPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('adminPassword'),
+          confirmInput: document.getElementById('adminPasswordConfirm'),
+          container: document.getElementById('adminPasswordStrengthContainer')
+        });
+      }, 100);
     }
 
     function closeSecurityModal() {
       document.getElementById('securityModal').classList.remove('active');
+      // 清理密码强度指示器
+      if (adminPasswordStrength) {
+        document.getElementById('adminPasswordStrengthContainer').innerHTML = '';
+        adminPasswordStrength = null;
+      }
     }
 
     document.getElementById('securityForm').addEventListener('submit', async (e) => {
@@ -359,9 +383,18 @@
       const projectId = document.getElementById('securityProjectId').value;
       const username = document.getElementById('adminUsername').value;
       const password = document.getElementById('adminPassword').value;
+      const confirmPassword = document.getElementById('adminPasswordConfirm').value;
 
-      if (password.length < 6) {
-        alert('密码至少需要6位');
+      // 验证密码确认
+      if (password !== confirmPassword) {
+        alert('两次密码输入不一致');
+        return;
+      }
+
+      // 验证密码强度
+      if (adminPasswordStrength && !adminPasswordStrength.isValid()) {
+        const errors = adminPasswordStrength.getErrors();
+        alert('密码不符合安全要求：\n\n' + errors.join('\n'));
         return;
       }
 

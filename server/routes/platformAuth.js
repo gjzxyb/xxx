@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { PlatformUser, SystemConfig } = require('../models');
 const { generatePlatformToken } = require('../middleware/platformAuth');
+const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
 
 // 验证码存储（简单内存存储，生产环境应使用 Redis）
 const captchaStore = new Map();
@@ -88,10 +89,28 @@ router.get('/captcha', async (req, res) => {
 });
 
 /**
+ * 获取密码策略配置
+ * GET /api/platform/auth/password-policy
+ */
+router.get('/password-policy', async (req, res) => {
+  try {
+    const policy = getPasswordPolicy();
+    res.json({
+      code: 200,
+      message: '操作成功',
+      data: policy
+    });
+  } catch (err) {
+    console.error('获取密码策略错误:', err);
+    res.status(500).json({ code: 500, message: '获取密码策略失败' });
+  }
+});
+
+/**
  * 平台用户注册
  * POST /api/platform/auth/register
  */
-router.post('/register', async (req, res) => {
+router.post('/register', validatePasswordMiddleware, async (req, res) => {
   try {
     const { email, password, name, captchaId, captchaAnswer } = req.body;
 

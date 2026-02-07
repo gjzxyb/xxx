@@ -359,6 +359,8 @@
         <div class="form-group" id="passwordGroup">
           <label class="form-label">密码（留空则默认为学号）</label>
           <input type="password" id="studentPassword" class="form-input">
+          <!-- 密码强度指示器容器 -->
+          <div id="studentPasswordStrengthContainer"></div>
         </div>
         <div class="flex justify-between">
           <button type="button" class="btn btn-secondary" onclick="closeStudentModal()">取消</button>
@@ -388,6 +390,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="js/api.js"></script>
+  <script src="js/passwordStrength.js"></script>
   <script>
     // Custom Confirm Dialog
     function showConfirm(message) {
@@ -743,6 +746,8 @@
     document.getElementById('classFilter').addEventListener('change', () => loadStudents(1));
 
     // 学生管理功能
+    let studentPasswordStrength = null;
+    
     function openStudentModal(isEdit = false, student = null) {
       const modal = document.getElementById('studentModal');
       modal.classList.add('active');
@@ -756,8 +761,21 @@
         document.getElementById('studentName').value = student.name;
         document.getElementById('studentClass').value = student.className || '';
         document.getElementById('passwordGroup').style.display = 'none';
+        
+        // 编辑模式不需要密码强度指示器
+        if (studentPasswordStrength) {
+          document.getElementById('studentPasswordStrengthContainer').innerHTML = '';
+        }
       } else {
         document.getElementById('passwordGroup').style.display = 'block';
+        
+        // 初始化密码强度指示器
+        setTimeout(() => {
+          studentPasswordStrength = new PasswordStrengthIndicator({
+            passwordInput: document.getElementById('studentPassword'),
+            container: document.getElementById('studentPasswordStrengthContainer')
+          });
+        }, 100);
       }
     }
 
@@ -777,6 +795,15 @@
       const className = document.getElementById('studentClass').value;
       const password = document.getElementById('studentPassword').value;
 
+      // 如果是新增学生且设置了密码，验证密码强度
+      if (!editId && password && studentPasswordStrength) {
+        if (!studentPasswordStrength.isValid()) {
+          const errors = studentPasswordStrength.getErrors();
+          showToast('密码不符合要求：' + errors.join('、'), 'error');
+          return;
+        }
+      }
+
       try {
         let result;
         if (editId) {
@@ -788,11 +815,11 @@
         }
 
         if (result.code === 200) {
-          alert(result.message || (editId ? '学生信息更新成功' : '学生添加成功'));
+          showToast(result.message || (editId ? '学生信息更新成功' : '学生添加成功'), 'success');
           closeStudentModal();
           loadStudents(currentPage);
         } else {
-          alert(result.message || '操作失败');
+          showToast(result.message || '操作失败', 'error');
         }
       } catch (err) {
         console.error('保存学生错误:', err);

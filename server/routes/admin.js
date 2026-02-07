@@ -3,6 +3,7 @@ const router = express.Router();
 const { Project } = require('../models'); // 平台级模型
 const { success, error } = require('../utils/response');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
+const { validatePasswordMiddleware } = require('../middleware/passwordPolicy');
 
 /**
  * 获取概览统计数据
@@ -108,7 +109,7 @@ router.get('/students', authenticateProject, requireProjectAdmin, async (req, re
  * 添加学生
  * POST /api/admin/students
  */
-router.post('/students', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.post('/students', authenticateProject, requireProjectAdmin, validatePasswordMiddleware, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const { studentId, name, className, password } = req.body;

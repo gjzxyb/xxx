@@ -980,3 +980,106 @@ tr:hover td {
     opacity: 0;
   }
 }
+
+/* Password Strength Indicator */
+.password-strength-container {
+  margin-top: 0.75rem;
+}
+
+.password-strength-bar {
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.password-strength-indicator {
+  height: 100%;
+  width: 0;
+  transition: all 0.3s ease;
+  border-radius: 999px;
+}
+
+.password-strength-indicator.strength-weak {
+  width: 33%;
+  background: linear-gradient(90deg, var(--danger) 0%, #f87171 100%);
+}
+
+.password-strength-indicator.strength-medium {
+  width: 66%;
+  background: linear-gradient(90deg, var(--warning) 0%, #fbbf24 100%);
+}
+
+.password-strength-indicator.strength-strong {
+  width: 100%;
+  background: linear-gradient(90deg, var(--success) 0%, #34d399 100%);
+}
+
+.password-strength-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.password-rules {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+}
+
+.password-rule-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.password-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  transition: var(--transition);
+}
+
+.password-rule:last-child {
+  margin-bottom: 0;
+}
+
+.password-rule .rule-icon {
+  font-size: 1rem;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.password-rule.rule-passed {
+  color: var(--text-primary);
+}
+
+.password-rule.rule-passed .rule-icon {
+  color: var(--success);
+}
+
+.password-match {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.password-match.rule-passed {
+  color: var(--text-primary);
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+}

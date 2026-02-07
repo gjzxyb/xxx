@@ -3,6 +3,7 @@ const router = express.Router();
 const { User } = require('../models');
 const { success, error } = require('../utils/response');
 const { authenticate, generateToken } = require('../middleware/auth');
+const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
 
 /**
  * 用户登录
@@ -57,7 +58,7 @@ router.post('/login', async (req, res) => {
  * 用户注册
  * POST /api/auth/register
  */
-router.post('/register', async (req, res) => {
+router.post('/register', validatePasswordMiddleware, async (req, res) => {
   try {
     // 检查注册是否开放（默认关闭）
     const { SystemConfig } = require('../models');
@@ -116,7 +117,7 @@ router.get('/profile', authenticate, async (req, res) => {
  * 修改密码
  * PUT /api/auth/password
  */
-router.put('/password', authenticate, async (req, res) => {
+router.put('/password', authenticate, validatePasswordMiddleware, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
 
@@ -166,4 +167,19 @@ router.get('/registration-status', async (req, res) => {
     success(res, { registrationEnabled: true });
   }
 });
+
+/**
+ * 获取密码策略配置
+ * GET /api/auth/password-policy
+ */
+router.get('/password-policy', async (req, res) => {
+  try {
+    const policy = getPasswordPolicy();
+    success(res, policy);
+  } catch (err) {
+    console.error('获取密码策略错误:', err);
+    error(res, '获取密码策略失败', 500);
+  }
+});
+
 module.exports = router;

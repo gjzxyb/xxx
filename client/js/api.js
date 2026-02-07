@@ -111,7 +111,9 @@ const api = {
     changePassword: (oldPassword, newPassword) => request('/auth/password', {
       method: 'PUT',
       body: JSON.stringify({ oldPassword, newPassword })
-    })
+    }),
+
+    getPasswordPolicy: () => request('/auth/password-policy')
   },
 
   // 科目相关
