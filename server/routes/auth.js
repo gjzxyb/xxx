@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { User } = require('../models');
 const { success, error } = require('../utils/response');
 const { authenticate, generateToken } = require('../middleware/auth');
 const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');

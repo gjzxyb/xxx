@@ -83,7 +83,7 @@ router.post('/', projectDb, authenticateProject, requireProjectAdmin, validateSu
  * 更新科目（管理员）
  * PUT /api/subjects/:id
  */
-router.put('/:id', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
+router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
     const { name, category, description, maxCapacity, isActive } = req.body;
     const { Subject } = req.projectModels;
@@ -112,7 +112,7 @@ router.put('/:id', projectDb, authenticateProject, requireProjectAdmin, async (r
  * 删除科目（管理员）
  * DELETE /api/subjects/:id
  */
-router.delete('/:id', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
+router.delete('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
     const { Subject } = req.projectModels;
     const subject = await Subject.findByPk(req.params.id);
