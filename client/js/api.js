@@ -85,9 +85,13 @@ async function request(url, options = {}) {
 
     const data = await response.json();
 
-    if (data.code === 401) {
+    // 只有在非登录接口且返回401时才自动跳转
+    if (data.code === 401 && !url.includes('/auth/login')) {
       clearToken();
-      window.location.href = '/';
+      // 保留 projectId 参数
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectId = urlParams.get('projectId');
+      window.location.href = projectId ? `/?projectId=${projectId}` : '/';
       return null;
     }
 
