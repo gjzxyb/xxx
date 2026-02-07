@@ -6,7 +6,7 @@
   <title>管理后台 - 分科自选系统</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/safeDOM.js"></script>
 </head>
 <body>
@@ -943,7 +943,7 @@
     }
 
     async function resetPassword(id, studentId) {
-      if (!confirm(`确定要重置该学生的密码吗？密码将重置为学号：${studentId}`)) {
+      if (!await confirm(`确定要重置学生 ${studentId} 的密码吗？\n\n系统将生成随机密码。`)) {
         return;
       }
 
@@ -951,13 +951,56 @@
         const result = await api.admin.resetPassword(id);
 
         if (result.code === 200) {
-          alert(result.message || '密码重置成功');
+          const newPassword = result.data.newPassword;
+          
+          // 创建显示密码的对话框
+          const passwordDialog = document.createElement('div');
+          passwordDialog.className = 'modal-overlay active';
+          passwordDialog.innerHTML = `
+            <div class="modal" style="max-width: 500px;">
+              <div class="modal-header">
+                <h3 class="modal-title">✅ 密码重置成功</h3>
+              </div>
+              <div class="modal-body" style="padding: 2rem;">
+                <p style="margin-bottom: 1rem; color: var(--text-primary);">学生 <strong>${studentId}</strong> 的新密码：</p>
+                <div style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                  <code style="font-size: 1.2rem; font-weight: 600; color: var(--primary); flex: 1;" id="newPasswordText">${newPassword}</code>
+                  <button class="btn btn-sm btn-secondary" onclick="copyPassword('${newPassword}')" style="margin-left: 1rem;">
+                    📋 复制
+                  </button>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                  ⚠️ 请务必将此密码告知学生，窗口关闭后将无法再次查看。
+                </p>
+              </div>
+              <div class="flex justify-center" style="padding: 0 2rem 2rem;">
+                <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">我已记下密码</button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(passwordDialog);
+          
+          // 添加复制密码函数
+          window.copyPassword = function(password) {
+            navigator.clipboard.writeText(password).then(() => {
+              showToast('密码已复制到剪贴板', 'success');
+            }).catch(() => {
+              // 降级方案：选中文本
+              const textElement = document.getElementById('newPasswordText');
+              const range = document.createRange();
+              range.selectNodeContents(textElement);
+              const selection = window.getSelection();
+              selection.removeAllRanges();
+              selection.addRange(range);
+              showToast('请手动复制选中的密码', 'info');
+            });
+          };
         } else {
-          alert(result.message || '重置失败');
+          showToast(result.message || '重置失败', 'error');
         }
       } catch (err) {
         console.error('重置密码错误:', err);
-        alert('重置失败');
+        showToast('重置失败', 'error');
       }
     }
 

@@ -98,16 +98,21 @@ class PasswordStrengthIndicator {
   }
 
   bindEvents() {
+    // 保存事件处理器引用，便于后续移除
+    this.handlePasswordInput = () => {
+      this.checkPassword(this.passwordInput.value);
+    };
+    
+    this.handleConfirmInput = () => {
+      this.checkPasswordMatch();
+    };
+    
     if (this.passwordInput) {
-      this.passwordInput.addEventListener('input', () => {
-        this.checkPassword(this.passwordInput.value);
-      });
+      this.passwordInput.addEventListener('input', this.handlePasswordInput);
     }
 
     if (this.confirmInput) {
-      this.confirmInput.addEventListener('input', () => {
-        this.checkPasswordMatch();
-      });
+      this.confirmInput.addEventListener('input', this.handleConfirmInput);
     }
   }
 
@@ -341,6 +346,25 @@ class PasswordStrengthIndicator {
     }
     
     return validation.errors;
+  }
+
+  /**
+   * 销毁实例，清理事件监听器和 DOM
+   */
+  destroy() {
+    // 移除事件监听器
+    if (this.passwordInput) {
+      this.passwordInput.removeEventListener('input', this.handlePasswordInput);
+    }
+    
+    if (this.confirmInput) {
+      this.confirmInput.removeEventListener('input', this.handleConfirmInput);
+    }
+    
+    // 清空容器内容
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
   }
 }
 

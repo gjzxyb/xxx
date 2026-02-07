@@ -10,14 +10,18 @@ const { body, param, query, validationResult } = require('express-validator');
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const errorDetails = errors.array().map(err => ({
+      field: err.path,
+      message: err.msg,
+      value: err.value
+    }));
+    
+    console.error('[验证失败]', JSON.stringify(errorDetails, null, 2));
+    
     return res.status(400).json({
       code: 400,
       message: '输入验证失败',
-      errors: errors.array().map(err => ({
-        field: err.path,
-        message: err.msg,
-        value: err.value
-      }))
+      errors: errorDetails
     });
   }
   next();
@@ -148,16 +152,16 @@ const validatePagination = [
  * 时间设置验证规则
  */
 const validateTimeSettings = [
-  body('startTime')
+  body('selectionStartTime')
     .notEmpty().withMessage('开始时间不能为空')
     .isISO8601().withMessage('开始时间格式不正确')
     .toDate(),
-  body('endTime')
+  body('selectionEndTime')
     .notEmpty().withMessage('结束时间不能为空')
     .isISO8601().withMessage('结束时间格式不正确')
     .toDate()
     .custom((endTime, { req }) => {
-      if (new Date(endTime) <= new Date(req.body.startTime)) {
+      if (new Date(endTime) <= new Date(req.body.selectionStartTime)) {
         throw new Error('结束时间必须晚于开始时间');
       }
       return true;
@@ -173,13 +177,16 @@ const validateSubject = [
     .trim()
     .notEmpty().withMessage('科目名称不能为空')
     .isLength({ min: 1, max: 50 }).withMessage('科目名称长度必须在1-50个字符之间'),
-  body('type')
-    .notEmpty().withMessage('科目类型不能为空')
-    .isIn(['physics-history', 'elective']).withMessage('科目类型必须是physics-history或elective'),
+  body('category')
+    .notEmpty().withMessage('科目分类不能为空')
+    .isIn(['physics_history', 'four_electives']).withMessage('科目分类必须是physics_history或four_electives'),
   body('description')
     .optional()
     .trim()
     .isLength({ max: 500 }).withMessage('科目描述不能超过500个字符'),
+  body('maxCapacity')
+    .optional()
+    .isInt({ min: 0 }).withMessage('最大容量必须是非负整数'),
   handleValidationErrors
 ];
 
@@ -203,8 +210,12 @@ const validatePasswordChange = [
     .notEmpty().withMessage('旧密码不能为空'),
   body('newPassword')
     .notEmpty().withMessage('新密码不能为空')
-    .isLength({ min: 6, max: 50 }).withMessage('新密码长度必须在6-50个字符之间')
     .custom((newPassword, { req }) => {
+      console.log('[validatePasswordChange] 验证新密码:', {
+        hasOldPassword: !!req.body.oldPassword,
+        newPasswordLength: newPassword?.length,
+        areSame: newPassword === req.body.oldPassword
+      });
       if (newPassword === req.body.oldPassword) {
         throw new Error('新密码不能与旧密码相同');
       }

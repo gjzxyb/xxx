@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { success, error } = require('../utils/response');
 const { authenticate, generateToken } = require('../middleware/auth');
+const { authenticateProject } = require('../middleware/projectAuth');
+const { projectDb } = require('../middleware/projectDb');
 const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
 const { validateLogin, validatePasswordChange } = require('../middleware/validation');
 const loginAttemptTracker = require('../lib/LoginAttemptTracker');
@@ -164,26 +166,91 @@ router.get('/profile', authenticate, async (req, res) => {
  * PUT /api/auth/password
  * 安全性：验证旧密码，检查新密码强度
  */
-router.put('/password', authenticate, validatePasswordChange, validatePasswordMiddleware, async (req, res) => {
+router.put('/password', projectDb, authenticateProject, async (req, res) => {
   try {
+    console.log('========== 修改密码请求开始 ==========');
+    console.log('用户:', req.user?.studentId, req.user?.name);
+    console.log('请求体:', JSON.stringify(req.body, null, 2));
+    
     const { oldPassword, newPassword } = req.body;
 
+    // 基本验证
     if (!oldPassword || !newPassword) {
+      console.error('缺少必需字段');
       return error(res, '请输入原密码和新密码');
     }
 
+    // 检查新密码格式
+    if (newPassword.length < 8 || newPassword.length > 32) {
+      console.error('密码长度不符合要求:', newPassword.length);
+      return res.status(400).json({
+        code: 400,
+        message: '密码长度必须在8-32个字符之间',
+        errors: [`当前长度: ${newPassword.length}`]
+      });
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      console.error('密码缺少大写字母');
+      return res.status(400).json({
+        code: 400,
+        message: '密码必须包含至少一个大写字母',
+        errors: []
+      });
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      console.error('密码缺少小写字母');
+      return res.status(400).json({
+        code: 400,
+        message: '密码必须包含至少一个小写字母',
+        errors: []
+      });
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      console.error('密码缺少数字');
+      return res.status(400).json({
+        code: 400,
+        message: '密码必须包含至少一个数字',
+        errors: []
+      });
+    }
+
+    // 检查禁用词
+    const lowerPassword = newPassword.toLowerCase();
+    const forbiddenPatterns = ['123456', 'password', 'qwerty', 'admin', 'abc123'];
+    for (const pattern of forbiddenPatterns) {
+      if (lowerPassword.includes(pattern)) {
+        console.error('密码包含禁用词:', pattern);
+        return res.status(400).json({
+          code: 400,
+          message: '密码过于简单，请使用更复杂的密码',
+          errors: [`包含禁用词: ${pattern}`]
+        });
+      }
+    }
+
+    // 验证旧密码
+    console.log('验证旧密码...');
     const isValid = await req.user.validatePassword(oldPassword);
     if (!isValid) {
+      console.error('旧密码错误');
       return error(res, '原密码错误');
     }
 
+    // 更新密码
+    console.log('更新密码...');
     req.user.password = newPassword;
     await req.user.save();
 
+    console.log('密码修改成功!');
+    console.log('========== 修改密码请求结束 ==========');
     success(res, null, '密码修改成功');
   } catch (err) {
-    console.error('修改密码错误:', err);
-    error(res, '修改密码失败', 500);
+    console.error('========== 修改密码异常 ==========');
+    console.error(err);
+    error(res, '修改密码失败: ' + err.message, 500);
   }
 });
 

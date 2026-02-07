@@ -121,6 +121,10 @@ function validatePasswordMiddleware(req, res, next) {
   const validation = validatePassword(passwordToValidate);
   
   if (!validation.isValid) {
+    console.error('密码验证失败:', {
+      password: '***',
+      errors: validation.errors
+    });
     return res.status(400).json({
       code: 400,
       message: '密码不符合安全要求',

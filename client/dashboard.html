@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="js/safeDOM.js"></script>
+  <script src="js/passwordStrength.js"></script>
 </head>
 <body>
   <div class="page-wrapper">
@@ -22,6 +23,7 @@
           <div class="nav-user">
             <div class="nav-user-avatar" id="userAvatar">U</div>
             <span id="userName">用户</span>
+            <a href="#" id="changePasswordBtn" style="color: var(--text-muted); margin-left: 0.5rem;">修改密码</a>
             <a href="#" id="logoutBtn" style="color: var(--text-muted); margin-left: 0.5rem;">退出</a>
           </div>
         </div>
@@ -88,6 +90,36 @@
     </main>
   </div>
 
+  <!-- 修改密码模态框 -->
+  <div class="modal-overlay" id="changePasswordModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">🔐 修改密码</h3>
+        <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+      </div>
+      <form id="changePasswordForm">
+        <div class="form-group">
+          <label class="form-label">当前密码</label>
+          <input type="password" id="currentPassword" class="form-input" required placeholder="请输入当前密码">
+        </div>
+        <div class="form-group">
+          <label class="form-label">新密码</label>
+          <input type="password" id="newPassword" class="form-input" required placeholder="8-32字符，含大小写字母和数字">
+          <!-- 密码强度指示器容器 -->
+          <div id="newPasswordStrengthContainer"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认新密码</label>
+          <input type="password" id="confirmPassword" class="form-input" required placeholder="请再次输入新密码">
+        </div>
+        <div class="flex justify-between">
+          <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">取消</button>
+          <button type="submit" class="btn btn-primary">确认修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="js/api.js"></script>
   <script>
     // 检查登录状态
@@ -137,6 +169,75 @@
       e.preventDefault();
       clearToken();
       window.location.href = projectId ? `/?projectId=${projectId}` : '/';
+    });
+
+    // 修改密码功能
+    let newPasswordStrength = null;
+
+    document.getElementById('changePasswordBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      showChangePasswordModal();
+    });
+
+    function showChangePasswordModal() {
+      document.getElementById('changePasswordModal').classList.add('active');
+      document.getElementById('changePasswordForm').reset();
+      
+      // 初始化密码强度指示器
+      setTimeout(() => {
+        if (newPasswordStrength) {
+          newPasswordStrength.destroy();
+        }
+        newPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('newPassword'),
+          container: document.getElementById('newPasswordStrengthContainer')
+        });
+      }, 100);
+    }
+
+    function closeChangePasswordModal() {
+      document.getElementById('changePasswordModal').classList.remove('active');
+      if (newPasswordStrength) {
+        newPasswordStrength.destroy();
+        newPasswordStrength = null;
+      }
+    }
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      // 验证新密码和确认密码是否一致
+      if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return;
+      }
+
+      // 验证密码强度
+      if (newPasswordStrength && !newPasswordStrength.isValid()) {
+        const errors = newPasswordStrength.getErrors();
+        alert('新密码不符合要求：\n' + errors.join('\n'));
+        return;
+      }
+
+      try {
+        const result = await api.auth.changePassword(currentPassword, newPassword);
+        
+        if (result.code === 200) {
+          alert('密码修改成功！请使用新密码重新登录');
+          closeChangePasswordModal();
+          clearToken();
+          window.location.href = projectId ? `/?projectId=${projectId}` : '/';
+        } else {
+          alert(result.message || '修改失败');
+        }
+      } catch (err) {
+        console.error('修改密码错误:', err);
+        alert('修改失败，请稍后重试');
+      }
     });
 
     // 加载选科状态

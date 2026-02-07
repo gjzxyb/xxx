@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/style.css?v=2">
   <link rel="stylesheet" href="/platform/css/dashboard.css?v=2">
   <script src="/js/safeDOM.js"></script>
+  <script src="/js/passwordStrength.js"></script>
 </head>
 <body>
   <div class="dashboard-layout">
@@ -124,7 +125,9 @@
         </div>
         <div class="form-group">
           <label class="form-label">管理员密码</label>
-          <input type="password" id="adminPassword" class="form-input" required placeholder="新密码（至少6位）">
+          <input type="password" id="adminPassword" class="form-input" required placeholder="8-32字符，含大小写字母和数字">
+          <!-- 密码强度指示器容器 -->
+          <div id="adminPasswordStrengthContainer"></div>
         </div>
         <div class="flex justify-between" style="margin-top: 2rem;">
           <button type="button" class="btn btn-secondary" onclick="closeSecurityModal()">取消</button>
@@ -500,11 +503,24 @@
     }
 
     // 安全设置弹窗
+    let adminPasswordStrength = null;
+    
     function showSecurityModal(projectId) {
       document.getElementById('securityProjectId').value = projectId;
       document.getElementById('adminUsername').value = '';
       document.getElementById('adminPassword').value = '';
       document.getElementById('securityModal').classList.add('active');
+      
+      // 初始化密码强度指示器
+      setTimeout(() => {
+        if (adminPasswordStrength) {
+          adminPasswordStrength.destroy();
+        }
+        adminPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('adminPassword'),
+          container: document.getElementById('adminPasswordStrengthContainer')
+        });
+      }, 100);
     }
 
     function closeSecurityModal() {
@@ -519,8 +535,10 @@
 
       console.log('[Security] Submitting credentials...', { projectId, username });
 
-      if (password.length < 6) {
-        alert('密码至少需要6位');
+      // 验证密码强度
+      if (adminPasswordStrength && !adminPasswordStrength.isValid()) {
+        const errors = adminPasswordStrength.getErrors();
+        showToast('密码不符合要求：' + errors.join('、'), 'error');
         return;
       }
 
