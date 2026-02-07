@@ -3,7 +3,7 @@
  * 用于需要在项目数据库中验证用户的路由
  */
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const tokenBlacklist = require('../lib/TokenBlacklist');
 
 // 安全性：不使用硬编码默认值，强制要求设置环境变量
 if (!process.env.JWT_SECRET) {
@@ -21,13 +21,27 @@ const JWT_SECRET = process.env.JWT_SECRET;
 async function authenticateProject(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token;
+
+    // 优先从 Authorization header 获取 token
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    // 其次从 query 参数获取 token (用于文件下载)
+    else if (req.query.token) {
+      token = req.query.token;
+    }
+
+    if (!token) {
       return res.status(401).json({ code: 401, message: '请先登录' });
     }
 
-    const token = authHeader.substring(7);
-    let decoded;
+    // 安全性：检查token是否在黑名单中
+    if (tokenBlacklist.isBlacklisted(token)) {
+      return res.status(401).json({ code: 401, message: 'Token已失效，请重新登录' });
+    }
 
+    let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
     } catch (err) {
@@ -35,6 +49,11 @@ async function authenticateProject(req, res, next) {
         return res.status(401).json({ code: 401, message: '登录已过期，请重新登录' });
       }
       return res.status(401).json({ code: 401, message: '无效的认证信息' });
+    }
+
+    // 验证项目数据库是否已初始化
+    if (!req.projectModels || !req.projectModels.User) {
+      return res.status(500).json({ code: 500, message: '项目数据库未初始化' });
     }
 
     const { User } = req.projectModels;
@@ -50,7 +69,7 @@ async function authenticateProject(req, res, next) {
     next();
   } catch (err) {
     console.error('项目认证错误:', err);
-    return res.status(401).json({ code: 401, message: '认证失败' });
+    return res.status(500).json({ code: 500, message: '认证失败' });
   }
 }
 

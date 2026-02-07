@@ -1,10 +1,17 @@
 // 加载环境变量配置（必须在最开头）
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
+// 验证环境变量配置
+const { validateEnv, validateProductionEnv } = require('./utils/validateEnv');
+if (!validateEnv() || !validateProductionEnv()) {
+  console.error('环境变量验证失败，应用无法启动');
+  process.exit(1);
+}
 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
 const fs = require('fs');
 
 // 导入模型和路由

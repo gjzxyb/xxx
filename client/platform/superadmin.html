@@ -448,9 +448,9 @@
         const result = await response.json();
 
         if (result.code === 200) {
-          const users = result.data;
-          document.getElementById('totalUsers').textContent = users.length;
-          document.getElementById('totalAdmins').textContent = users.filter(u => u.isSuperAdmin).length;
+          const users = result.data.users || [];  // 修复：正确获取 users 数组
+          const total = result.data.total || 0;
+          document.getElementById('totalUsers').textContent = total;
           
           const tbody = document.getElementById('usersTable');
           safeDOM.empty(tbody);
@@ -497,50 +497,6 @@
             });
             tbody.appendChild(tr);
           });
-        }
-      } catch (error) {
-        console.error('加载用户列表失败:', error);
-      }
-    }
-
-            let actionButtons = `
-              <button class="btn btn-sm btn-primary" onclick="editUser(${u.id}, '${u.email}', '${u.name}', ${u.maxProjects})">编辑</button>
-            `;
-
-            if (!u.isSuperAdmin) {
-              if (u.isDisabled) {
-                actionButtons += `
-                  <button class="btn btn-sm btn-success" onclick="toggleUserStatus(${u.id}, false)">启用</button>
-                `;
-              } else {
-                actionButtons += `
-                  <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${u.id}, true)">禁用</button>
-                `;
-              }
-              actionButtons += `
-                <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id}, '${u.email}', ${u.projectCount})">删除</button>
-              `;
-            }
-
-            return `
-              <tr>
-                <td>${u.id}</td>
-                <td>${u.email}</td>
-                <td>${u.name}</td>
-                <td>${statusBadge}</td>
-                <td>${u.projectCount}</td>
-                <td>${u.maxProjects}</td>
-                <td>${new Date(u.createdAt).toLocaleString('zh-CN')}</td>
-                <td>
-                  <div class="action-buttons">
-                    ${actionButtons}
-                  </div>
-                </td>
-              </tr>
-            `;
-          }).join('');
-
-          document.getElementById('usersTable').innerHTML = usersHtml;
         }
       } catch (error) {
         console.error('加载用户列表失败:', error);

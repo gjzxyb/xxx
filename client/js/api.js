@@ -60,11 +60,21 @@ async function request(url, options = {}) {
   const urlParams = new URLSearchParams(window.location.search);
   const projectId = urlParams.get('projectId');
 
-  // 如果URL中有projectId，自动添加到API请求中
+  // 使用 URL API 优化 URL 拼接
   let finalUrl = url;
   if (projectId && !url.includes('projectId=')) {
-    const separator = url.includes('?') ? '&' : '?';
-    finalUrl = `${url}${separator}projectId=${projectId}`;
+    try {
+      // 创建完整的 URL 对象
+      const fullUrl = new URL(url, API_BASE);
+      // 使用 URLSearchParams 添加参数
+      fullUrl.searchParams.append('projectId', projectId);
+      // 返回相对路径（去除 base）
+      finalUrl = fullUrl.pathname + fullUrl.search;
+    } catch (e) {
+      // 降级方案：使用原来的字符串拼接
+      const separator = url.includes('?') ? '&' : '?';
+      finalUrl = `${url}${separator}projectId=${projectId}`;
+    }
   }
 
   try {

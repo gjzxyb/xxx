@@ -43,17 +43,28 @@ class DatabaseManager {
    * 设置连接池监控
    */
   setupConnectionMonitoring() {
+    // 只在开发环境且启用 DEBUG 时进行详细监控
+    const enableDetailedMonitoring = process.env.NODE_ENV === 'development' && process.env.DEBUG === 'true';
+    
     // 每5分钟检查一次连接数
     setInterval(() => {
       const activeConnections = this.projectConnections.size;
+      
+      // 警告：连接数接近限制（所有环境）
       if (activeConnections > this.connectionLimit * 0.8) {
         console.warn(`⚠️  数据库连接数接近限制: ${activeConnections}/${this.connectionLimit}`);
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📊 活动数据库连接: ${activeConnections}`);
+      // 详细日志：仅在开发环境+DEBUG模式
+      if (enableDetailedMonitoring) {
+        console.debug(`📊 活动数据库连接: ${activeConnections}`);
+        console.debug(`📊 连接列表: ${Array.from(this.projectConnections.keys()).join(', ')}`);
       }
     }, 5 * 60 * 1000);
+    
+    if (enableDetailedMonitoring) {
+      console.log('🔍 数据库连接监控已启用（DEBUG模式）');
+    }
   }
 
   /**

@@ -1,81 +1,11 @@
-const { DataTypes } = require('sequelize');
+/**
+ * 主数据库用户模型
+ * 使用统一的模型工厂函数，包含 projectId 字段用于多租户隔离
+ */
 const sequelize = require('../config/database');
-const bcrypt = require('bcryptjs');
+const createUserModel = require('./BaseUserModel');
 
-const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  studentId: {
-    type: DataTypes.STRING(20),
-    allowNull: false,
-    comment: '学号'
-  },
-  name: {
-    type: DataTypes.STRING(50),
-    allowNull: false,
-    comment: '姓名'
-  },
-  password: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-    comment: '密码(加密)'
-  },
-  className: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-    comment: '班级'
-  },
-  role: {
-    type: DataTypes.ENUM('student', 'admin'),
-    defaultValue: 'student',
-    comment: '角色'
-  },
-  phone: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-    comment: '手机号'
-  },
-  projectId: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    field: 'project_id',
-    comment: '所属项目ID（租户隔离）'
-  }
-}, {
-  tableName: 'users',
-  indexes: [
-    {
-      unique: true,
-      fields: ['studentId', 'project_id'],
-      name: 'unique_student_per_project'
-    }
-  ],
-  hooks: {
-    beforeCreate: async (user) => {
-      if (user.password) {
-        user.password = await bcrypt.hash(user.password, 10);
-      }
-    },
-    beforeUpdate: async (user) => {
-      if (user.changed('password')) {
-        user.password = await bcrypt.hash(user.password, 10);
-      }
-    }
-  }
-});
-
-// 验证密码
-User.prototype.validatePassword = async function(password) {
-  return bcrypt.compare(password, this.password);
-};
-
-// 返回用户信息（隐藏密码）
-User.prototype.toSafeObject = function() {
-  const { password, ...safeUser } = this.toJSON();
-  return safeUser;
-};
+// 创建包含 projectId 的用户模型（主数据库）
+const User = createUserModel(sequelize, { includeProjectId: true });
 
 module.exports = User;

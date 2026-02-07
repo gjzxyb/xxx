@@ -382,37 +382,9 @@ router.get('/export', projectDb, authenticateProject, requireProjectAdmin, async
  * 选科统计（管理员）
  * GET /api/selections/stats
  */
-router.get('/stats', projectDb, async (req, res) => {
+router.get('/stats', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
-    // 手动验证token和管理员权限（因为需要在项目数据库中验证）
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ code: 401, message: '请先登录' });
-    }
-
-    const token = authHeader.substring(7);
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET;
-    
-    if (!JWT_SECRET) {
-      console.error('JWT_SECRET未配置！请在.env文件中设置JWT_SECRET');
-      return res.status(500).json({ code: 500, message: '服务器配置错误' });
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({ code: 401, message: '无效的认证信息' });
-    }
-
     const { User, Subject, Selection } = req.projectModels;
-
-    // 在项目数据库中查找用户
-    const user = await User.findByPk(decoded.userId);
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ code: 403, message: '无权访问' });
-    }
 
     const subjects = await Subject.findAll();
     const stats = [];
