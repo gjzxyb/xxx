@@ -76,14 +76,184 @@
 
         <!-- 选科说明 -->
         <div class="card mt-4 animate-fadeIn" style="animation-delay: 0.4s;">
-          <h3 class="card-title mb-2">📖 新高考 3+1+2 选科说明</h3>
-          <div style="color: var(--text-secondary); line-height: 1.8;">
+          <h3 class="card-title mb-3">📖 新高考 3+1+2 选科说明</h3>
+          <div style="color: var(--text-secondary); line-height: 1.8; margin-bottom: 2rem;">
             <p><strong>3</strong>：语文、数学、外语（必考科目，无需选择）</p>
             <p><strong>1</strong>：物理、历史（首选科目，二选一）</p>
             <p><strong>2</strong>：化学、生物、政治、地理（再选科目，四选二）</p>
             <div class="alert alert-warning mt-3">
               <span>⚠️ 选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
             </div>
+          </div>
+
+          <!-- 选科组合详细说明 -->
+          <h4 style="margin-top: 2rem; margin-bottom: 1.5rem; color: var(--primary);">🎯 选科组合分析指南</h4>
+          
+          <!-- 物理 + 化学 + X -->
+          <div style="margin-bottom: 2.5rem;">
+            <h5 style="color: var(--primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-light);">
+              🔬 物理 + 化学 + X（纯理组合，专业覆盖率最高 ≥95%）
+            </h5>
+            <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-top: 1rem;">
+              
+              <!-- 物+化+生 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <h6 style="color: #3b82f6; margin-bottom: 0.8rem; font-weight: 600;">物理 + 化学 + 生物</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>学科联系紧密，理化生协同</p>
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--danger);">✗ 劣势：</strong>竞争最激烈，学霸云集，赋分难度大</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>几乎涵盖所有专业</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>医生、科研人员、生物制药、化工工程师</p>
+                </div>
+              </div>
+
+              <!-- 物+化+地 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #10b981;">
+                <h6 style="color: #10b981; margin-bottom: 0.8rem; font-weight: 600;">物理 + 化学 + 地理</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>地理被称为"理科中的文科"，背诵量适中，理解容易</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>理工类、地质勘探、建筑学、城市规划</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>建筑师、地质分析师、公务员、科研机构</p>
+                </div>
+              </div>
+
+              <!-- 物+化+政 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <h6 style="color: #f59e0b; margin-bottom: 0.8rem; font-weight: 600;">物理 + 化学 + 政治</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>考虑到考公、考研，政治有长期优势</p>
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--danger);">✗ 劣势：</strong>学科跨度大，思维转换累</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>理工类，在报考警校、军校时有极大优势</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>工程师、国家公职人员、技术类警官</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 物理 + 非化学 + X -->
+          <div style="margin-bottom: 2.5rem;">
+            <h5 style="color: var(--primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-light);">
+              ⚗️ 物理 + 非化学 + X（侧重理解与逻辑）
+            </h5>
+            <p style="color: var(--warning); font-size: 0.9rem; margin-bottom: 1rem; padding: 0.8rem; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">
+              ⚠️ 注意：避开化学后，部分高水平理工类院校专业（如计算机、机械）可能无法报考
+            </p>
+            <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+              
+              <!-- 物+生+地 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                <h6 style="color: #8b5cf6; margin-bottom: 0.8rem; font-weight: 600;">物理 + 生物 + 地理</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>难度相对较低，适合物理好但化学差的学生</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>基础理科、农林类、园林设计、心理学</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>景观设计师、园艺师、软件开发（限部分院校）</p>
+                </div>
+              </div>
+
+              <!-- 物+生+政 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #ec4899;">
+                <h6 style="color: #ec4899; margin-bottom: 0.8rem; font-weight: 600;">物理 + 生物 + 政治</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>避开繁琐计算，侧重记忆与逻辑</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>体育、艺术、医学相关（非临床）、政治学</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>老师、体育康复、传媒管理</p>
+                </div>
+              </div>
+
+              <!-- 物+政+地 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #06b6d4;">
+                <h6 style="color: #06b6d4; margin-bottom: 0.8rem; font-weight: 600;">物理 + 政治 + 地理</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>纯文理交叉，不考实验学科</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>管理学、经济学、地理信息系统</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>行政管理、金融分析、城市规划</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 历史 + 化学 + X -->
+          <div style="margin-bottom: 2.5rem;">
+            <h5 style="color: var(--primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-light);">
+              📜 历史 + 化学 + X（文科偏理，竞争压力适中）
+            </h5>
+            <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+              
+              <!-- 历+化+生 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #14b8a6;">
+                <h6 style="color: #14b8a6; margin-bottom: 0.8rem; font-weight: 600;">历史 + 化学 + 生物</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>文科生中的"理科生"，在涉及护理、考古等专业时有优势</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>文史哲、护理、药剂、考古学</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>护士、考古人员、教育工作者</p>
+                </div>
+              </div>
+
+              <!-- 历+化+地 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #f97316;">
+                <h6 style="color: #f97316; margin-bottom: 0.8rem; font-weight: 600;">历史 + 化学 + 地理</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>知识面广，对地理和化学有兴趣的文科生适用</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>文史哲、旅游管理、地理资源</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>导游、策展人、文秘</p>
+                </div>
+              </div>
+
+              <!-- 历+化+政 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #ef4444;">
+                <h6 style="color: #ef4444; margin-bottom: 0.8rem; font-weight: 600;">历史 + 化学 + 政治</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>极具挑战性的文科组合</p>
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--danger);">✗ 劣势：</strong>记忆量大</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>法学、社会学、马克思主义理论、政治学</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>公务员、法务、新闻编辑</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 历史 + 非化学 + X -->
+          <div style="margin-bottom: 1rem;">
+            <h5 style="color: var(--primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-light);">
+              📖 历史 + 非化学 + X（传统纯文方向）
+            </h5>
+            <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+              
+              <!-- 历+生+地 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #84cc16;">
+                <h6 style="color: #84cc16; margin-bottom: 0.8rem; font-weight: 600;">历史 + 生物 + 地理</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>难度最低，适合追求总分、不擅长逻辑推理的学生</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>语言类、酒店管理、社会学</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>翻译、酒店经理、中小学老师</p>
+                </div>
+              </div>
+
+              <!-- 历+生+政 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #a855f7;">
+                <h6 style="color: #a855f7; margin-bottom: 0.8rem; font-weight: 600;">历史 + 生物 + 政治</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>偏向感性思维，适合走艺术或政法路线</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>广播电视、法学、公共事业管理</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>记者、主持人、社区服务</p>
+                </div>
+              </div>
+
+              <!-- 历+政+地 -->
+              <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #64748b;">
+                <h6 style="color: #64748b; margin-bottom: 0.8rem; font-weight: 600;">历史 + 政治 + 地理</h6>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--success);">✓ 优势：</strong>最纯粹的文科组合，逻辑体系单一</p>
+                  <p style="margin: 0.5rem 0;"><strong style="color: var(--danger);">✗ 劣势：</strong>专业覆盖率最低（约40%-50%）</p>
+                  <p style="margin: 0.5rem 0;"><strong>📚 专业面：</strong>历史、法学、汉语言文学、小语种</p>
+                  <p style="margin: 0.5rem 0;"><strong>💼 就业：</strong>教师、法官/律师、行政管理、媒体人</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-info" style="margin-top: 2rem;">
+            <span>💡 <strong>温馨提示：</strong>选科时需综合考虑个人兴趣、学科优势、未来职业规划和目标院校专业要求。建议咨询老师和家长，做出最适合自己的选择！</span>
           </div>
         </div>
       </div>
@@ -255,92 +425,255 @@
       }
     }
 
+    // 获取组合分析数据
+    function getCombinationAnalysis(physics, elective1, elective2) {
+      const combinations = {
+        '物理-化学-生物': {
+          color: '#3b82f6',
+          category: '🔬 物理 + 化学 + X（纯理组合）',
+          coverage: '≥95%',
+          advantages: '学科联系紧密，理化生协同',
+          disadvantages: '竞争最激烈，学霸云集，赋分难度大',
+          majors: '几乎涵盖所有专业，医学、生物工程、制药、环境科学等必选',
+          careers: '医生、科研人员、生物制药、化工工程师'
+        },
+        '物理-化学-地理': {
+          color: '#10b981',
+          category: '🔬 物理 + 化学 + X（纯理组合）',
+          coverage: '≥95%',
+          advantages: '地理被称为"理科中的文科"，背诵量适中，理解容易',
+          disadvantages: '',
+          majors: '理工类、地质勘探、建筑学、城市规划',
+          careers: '建筑师、地质分析师、公务员、科研机构'
+        },
+        '物理-化学-政治': {
+          color: '#f59e0b',
+          category: '🔬 物理 + 化学 + X（纯理组合）',
+          coverage: '≥95%',
+          advantages: '考虑到考公、考研，政治有长期优势',
+          disadvantages: '学科跨度大，思维转换累',
+          majors: '理工类，在报考警校、军校时有极大优势',
+          careers: '工程师、国家公职人员、技术类警官'
+        },
+        '物理-生物-地理': {
+          color: '#8b5cf6',
+          category: '⚗️ 物理 + 非化学 + X（侧重理解与逻辑）',
+          coverage: '约80%',
+          advantages: '难度相对较低，适合物理好但化学差的学生',
+          disadvantages: '部分高水平理工类专业可能无法报考',
+          majors: '基础理科、农林类、园林设计、心理学',
+          careers: '景观设计师、园艺师、软件开发（限部分院校）'
+        },
+        '物理-生物-政治': {
+          color: '#ec4899',
+          category: '⚗️ 物理 + 非化学 + X（侧重理解与逻辑）',
+          coverage: '约75%',
+          advantages: '避开繁琐计算，侧重记忆与逻辑',
+          disadvantages: '部分高水平理工类专业可能无法报考',
+          majors: '体育、艺术、医学相关（非临床）、政治学',
+          careers: '老师、体育康复、传媒管理'
+        },
+        '物理-政治-地理': {
+          color: '#06b6d4',
+          category: '⚗️ 物理 + 非化学 + X（侧重理解与逻辑）',
+          coverage: '约70%',
+          advantages: '纯文理交叉，不考实验学科',
+          disadvantages: '部分高水平理工类专业可能无法报考',
+          majors: '管理学、经济学、地理信息系统',
+          careers: '行政管理、金融分析、城市规划'
+        },
+        '历史-化学-生物': {
+          color: '#14b8a6',
+          category: '📜 历史 + 化学 + X（文科偏理）',
+          coverage: '约55%',
+          advantages: '文科生中的"理科生"，在涉及护理、考古等专业时有优势',
+          disadvantages: '',
+          majors: '文史哲、护理、药剂、考古学',
+          careers: '护士、考古人员、教育工作者'
+        },
+        '历史-化学-地理': {
+          color: '#f97316',
+          category: '📜 历史 + 化学 + X（文科偏理）',
+          coverage: '约50%',
+          advantages: '知识面广，对地理和化学有兴趣的文科生适用',
+          disadvantages: '',
+          majors: '文史哲、旅游管理、地理资源',
+          careers: '导游、策展人、文秘'
+        },
+        '历史-化学-政治': {
+          color: '#ef4444',
+          category: '📜 历史 + 化学 + X（文科偏理）',
+          coverage: '约52%',
+          advantages: '极具挑战性的文科组合',
+          disadvantages: '记忆量大',
+          majors: '法学、社会学、马克思主义理论、政治学',
+          careers: '公务员、法务、新闻编辑'
+        },
+        '历史-生物-地理': {
+          color: '#84cc16',
+          category: '📖 历史 + 非化学 + X（传统纯文）',
+          coverage: '约45%',
+          advantages: '难度最低，适合追求总分、不擅长逻辑推理的学生',
+          disadvantages: '',
+          majors: '语言类、酒店管理、社会学',
+          careers: '翻译、酒店经理、中小学老师'
+        },
+        '历史-生物-政治': {
+          color: '#a855f7',
+          category: '📖 历史 + 非化学 + X（传统纯文）',
+          coverage: '约48%',
+          advantages: '偏向感性思维，适合走艺术或政法路线',
+          disadvantages: '',
+          majors: '广播电视、法学、公共事业管理',
+          careers: '记者、主持人、社区服务'
+        },
+        '历史-政治-地理': {
+          color: '#64748b',
+          category: '📖 历史 + 非化学 + X（传统纯文）',
+          coverage: '约40%-50%',
+          advantages: '最纯粹的文科组合，逻辑体系单一',
+          disadvantages: '专业覆盖率最低',
+          majors: '历史、法学、汉语言文学、小语种',
+          careers: '教师、法官/律师、行政管理、媒体人'
+        }
+      };
+
+      const key = `${physics}-${elective1}-${elective2}`;
+      return combinations[key] || null;
+    }
+
     // 加载我的选科
     async function loadMySelection() {
       const content = document.getElementById('selectionContent');
-      const result = await api.selections.getMy();
+      
+      try {
+        const result = await api.selections.getMy();
+        console.log('Selection data:', result); // 调试信息
 
-      if (result.code === 200 && result.data) {
-        const sel = result.data;
+        if (result.code === 200 && result.data) {
+          const sel = result.data;
+          
+          // 更新统计卡片
+          document.getElementById('statPhysicsHistory').textContent = sel.physicsHistorySubject?.name || '-';
+          document.getElementById('statElectives').textContent = 
+            `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`;
+          
+          const statusMap = {
+            'draft': '草稿',
+            'submitted': '已提交',
+            'confirmed': '已确认',
+            'cancelled': '已取消'
+          };
+          document.getElementById('statStatus').textContent = statusMap[sel.status] || '-';
+          
+          // 获取组合分析
+          const analysis = getCombinationAnalysis(
+            sel.physicsHistorySubject?.name,
+            sel.electiveOneSubject?.name,
+            sel.electiveTwoSubject?.name
+          );
+          
+          console.log('Analysis data:', analysis); // 调试信息
         
-        // 更新统计卡片
-        document.getElementById('statPhysicsHistory').textContent = sel.physicsHistorySubject?.name || '-';
-        document.getElementById('statElectives').textContent = 
-          `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`;
-        
-        const statusMap = {
-          'draft': '草稿',
-          'submitted': '已提交',
-          'confirmed': '已确认',
-          'cancelled': '已取消'
-        };
-        document.getElementById('statStatus').textContent = statusMap[sel.status] || '-';
-        
-        // 更新选科详情
-        safeDOM.empty(content);
-        
-        const card = safeDOM.createElement('div', {
-          className: 'card',
-          children: [
-            safeDOM.createElement('h2', { text: '已选科目' }),
-            safeDOM.createElement('div', {
-              className: 'selection-display',
-              children: [
-                safeDOM.createElement('div', {
-                  className: 'subject-item physics-history',
-                  children: [
-                    safeDOM.createElement('label', { text: '首选科目' }),
-                    safeDOM.createElement('div', {
-                      className: 'value',
-                      text: sel.physicsHistorySubject?.name || '-'
-                    })
-                  ]
-                }),
-                safeDOM.createElement('div', {
-                  className: 'subject-item electives',
-                  children: [
-                    safeDOM.createElement('label', { text: '再选科目' }),
-                    safeDOM.createElement('div', {
-                      className: 'value',
-                      text: `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`
-                    })
-                  ]
-                }),
-                safeDOM.createElement('div', {
-                  className: 'submit-time',
-                  text: `提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}`
-                })
-              ]
-            }),
-            safeDOM.createElement('a', {
-              attrs: { href: 'selection.html' },
-              className: 'btn btn-secondary',
-              text: '修改选科'
-            })
-          ]
-        });
-        content.appendChild(card);
-      } else {
-        // 未选科时的统计卡片显示
-        document.getElementById('statPhysicsHistory').textContent = '未选择';
-        document.getElementById('statElectives').textContent = '未选择';
-        document.getElementById('statStatus').textContent = '未提交';
-        
-        // 更新选科详情
-        safeDOM.empty(content);
-        
-        const card = safeDOM.createElement('div', {
-          className: 'card text-center',
-          children: [
-            safeDOM.createElement('p', { text: '您还未进行选科' }),
-            safeDOM.createElement('a', {
-              attrs: { href: 'selection.html' },
-              className: 'btn btn-primary',
-              text: '开始选科'
-            })
-          ]
-        });
-        content.appendChild(card);
+        // 更新选科详情 - 使用两栏布局
+        content.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- 左侧：已选科目 -->
+            <div>
+              <h4 style="margin-bottom: 1rem; color: var(--primary);">📝 已选科目</h4>
+              <div class="selection-display" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                <div class="subject-item physics-history" style="margin-bottom: 1rem;">
+                  <label style="font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">首选科目</label>
+                  <div class="value" style="font-size: 1.2rem; color: var(--primary); font-weight: 600;">
+                    ${sel.physicsHistorySubject?.name || '-'}
+                  </div>
+                </div>
+                <div class="subject-item electives" style="margin-bottom: 1rem;">
+                  <label style="font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">再选科目</label>
+                  <div class="value" style="font-size: 1.2rem; color: var(--primary); font-weight: 600;">
+                    ${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}
+                  </div>
+                </div>
+                <div class="submit-time" style="font-size: 0.9rem; color: var(--text-muted); padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                  提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}
+                </div>
+              </div>
+              <a href="selection.html" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;">修改选科</a>
+            </div>
+
+            <!-- 右侧：组合分析指南 -->
+            <div>
+              <h4 style="margin-bottom: 1rem; color: var(--primary);">🎯 组合分析指南</h4>
+              ${analysis ? `
+                <div style="background: linear-gradient(135deg, ${analysis.color}15 0%, ${analysis.color}05 100%); padding: 1.5rem; border-radius: 8px; border-left: 4px solid ${analysis.color};">
+                  <div style="margin-bottom: 1rem;">
+                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem;">${analysis.category}</div>
+                    <h5 style="color: ${analysis.color}; font-weight: 600; font-size: 1.1rem; margin: 0;">
+                      ${sel.physicsHistorySubject?.name} + ${sel.electiveOneSubject?.name} + ${sel.electiveTwoSubject?.name}
+                    </h5>
+                  </div>
+
+                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem;">📊 专业覆盖率</div>
+                    <div style="font-weight: 600; color: ${analysis.color}; font-size: 1.1rem;">${analysis.coverage}</div>
+                  </div>
+
+                  ${analysis.advantages ? `
+                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.85rem; color: #10b981; margin-bottom: 0.3rem; font-weight: 600;">✓ 优势</div>
+                    <div style="color: #1f2937; line-height: 1.6;">${analysis.advantages}</div>
+                  </div>
+                  ` : ''}
+
+                  ${analysis.disadvantages ? `
+                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.85rem; color: #ef4444; margin-bottom: 0.3rem; font-weight: 600;">✗ 劣势</div>
+                    <div style="color: #1f2937; line-height: 1.6;">${analysis.disadvantages}</div>
+                  </div>
+                  ` : ''}
+
+                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem; font-weight: 600;">📚 可选专业面</div>
+                    <div style="color: #1f2937; line-height: 1.6;">${analysis.majors}</div>
+                  </div>
+
+                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem; font-weight: 600;">💼 就业方向</div>
+                    <div style="color: #1f2937; line-height: 1.6;">${analysis.careers}</div>
+                  </div>
+                </div>
+              ` : `
+                <div style="background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-muted);">
+                  <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                  <p>暂无该组合的分析数据</p>
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+        } else {
+          // 未选科时的统计卡片显示
+          document.getElementById('statPhysicsHistory').textContent = '未选择';
+          document.getElementById('statElectives').textContent = '未选择';
+          document.getElementById('statStatus').textContent = '未提交';
+          
+          // 更新选科详情
+          content.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+              <div style="font-size: 4rem; margin-bottom: 1rem;">📝</div>
+              <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">您还未进行选科</p>
+              <a href="selection.html" class="btn btn-primary">开始选科</a>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('加载选科数据失败:', error);
+        content.innerHTML = `
+          <div style="text-align: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--danger);">⚠️</div>
+            <p style="color: var(--text-secondary);">加载失败，请刷新页面重试</p>
+          </div>
+        `;
       }
     }
 
