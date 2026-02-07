@@ -163,8 +163,9 @@ router.get('/profile', authenticate, async (req, res) => {
 /**
  * 修改密码
  * PUT /api/auth/password
+ * 安全性：验证旧密码，检查新密码强度
  */
-router.put('/password', authenticate, validatePasswordMiddleware, async (req, res) => {
+router.put('/password', authenticate, validatePasswordChange, validatePasswordMiddleware, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
 

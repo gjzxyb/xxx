@@ -51,18 +51,26 @@ const validateUserCreate = [
     .notEmpty().withMessage('姓名不能为空')
     .isLength({ min: 1, max: 50 }).withMessage('姓名长度必须在1-50个字符之间'),
   body('password')
-    .optional({ checkFalsy: true })
-    .isLength({ min: 6, max: 50 }).withMessage('密码长度必须在6-50个字符之间'),
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 8, max: 32 }).withMessage('密码长度必须在8-32个字符之间')
+    .matches(/[a-z]/).withMessage('密码必须包含至少一个小写字母')
+    .matches(/[A-Z]/).withMessage('密码必须包含至少一个大写字母')
+    .matches(/[0-9]/).withMessage('密码必须包含至少一个数字'),
   body('className')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .isLength({ max: 50 }).withMessage('班级名称不能超过50个字符'),
   body('phone')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
-    .matches(/^1[3-9]\d{9}$/).withMessage('手机号格式不正确'),
+    .custom((value) => {
+      if (value && value.length > 0 && !/^1[3-9]\d{9}$/.test(value)) {
+        throw new Error('手机号格式不正确');
+      }
+      return true;
+    }),
   body('role')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['student', 'admin']).withMessage('角色必须是student或admin'),
   handleValidationErrors
 ];

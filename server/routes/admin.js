@@ -107,10 +107,10 @@ router.get('/students', authenticateProject, requireProjectAdmin, async (req, re
 });
 
 /**
- * 添加学生
+ * 创建学生
  * POST /api/admin/students
  */
-router.post('/students', authenticateProject, requireProjectAdmin, validatePasswordMiddleware, async (req, res) => {
+router.post('/students', authenticateProject, requireProjectAdmin, validateUserCreate, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const { studentId, name, className, password } = req.body;
@@ -153,7 +153,7 @@ router.post('/students', authenticateProject, requireProjectAdmin, validatePassw
  * 批量导入学生
  * POST /api/admin/import-students
  */
-router.post('/import-students', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.post('/import-students', authenticateProject, requireProjectAdmin, validateStudentsImport, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const { students } = req.body;

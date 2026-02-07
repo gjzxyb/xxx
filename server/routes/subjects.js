@@ -2,61 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { success, error, notFound } = require('../utils/response');
 const { projectDb } = require('../middleware/projectDb');
-const jwt = require('jsonwebtoken');
-
-// JWT_SECRET必须在环境变量中配置
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  console.error('❌ 致命错误: JWT_SECRET未配置！');
-  console.error('   请在.env文件中设置JWT_SECRET环境变量');
-  process.exit(1);
-}
-
-/**
- * 项目级认证中间件（用于subjects路由）
- */
-async function authenticateProject(req, res, next) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ code: 401, message: '请先登录' });
-    }
-
-    const token = authHeader.substring(7);
-    let decoded;
-
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({ code: 401, message: '无效的认证信息' });
-    }
-
-    const { User } = req.projectModels;
-
-    // 在项目数据库中查找用户
-    const user = await User.findByPk(decoded.userId);
-    if (!user) {
-      return res.status(401).json({ code: 401, message: '用户不存在' });
-    }
-
-    req.user = user;
-    req.userId = user.id;
-    next();
-  } catch (err) {
-    console.error('项目认证错误:', err);
-    return res.status(401).json({ code: 401, message: '认证失败' });
-  }
-}
-
-/**
- * 项目级管理员权限检查
- */
-async function requireProjectAdmin(req, res, next) {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ code: 403, message: '需要管理员权限' });
-  }
-  next();
-}
+const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
+const { validateSubject, validateIdParam } = require('../middleware/validation');
 
 /**
  * 获取所有科目
@@ -107,7 +54,7 @@ router.get('/:id', projectDb, authenticateProject, async (req, res) => {
  * 创建科目（管理员）
  * POST /api/subjects
  */
-router.post('/', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
+router.post('/', projectDb, authenticateProject, requireProjectAdmin, validateSubject, async (req, res) => {
   try {
     const { name, category, description, maxCapacity } = req.body;
     const { Subject } = req.projectModels;

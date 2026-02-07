@@ -1,42 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { Project } = require('../models'); // 只需要平台级的 Project 模型
-const { success, error, notFound } = require('../utils/response');
+const { Op } = require('sequelize');
+const { success, error } = require('../utils/response');
+const { projectDb } = require('../middleware/projectDb');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
-const { projectDb, optionalProjectDb } = require('../middleware/projectDb');
+const { validateSelectionSubmit } = require('../middleware/validation');
 
 /**
- * 检查选科时间是否开放（基于项目配置）
- * @param {number} projectId - 项目ID
- */
-const checkSelectionTime = async (projectId) => {
-  const project = await Project.findByPk(projectId);
-  if (!project) {
-    return { open: false, message: '项目不存在' };
-  }
-
-  const { selectionStartTime, selectionEndTime } = project;
-
-  if (!selectionStartTime || !selectionEndTime) {
-    return { open: false, message: '选科时间未设置' };
-  }
-
-  const now = new Date();
-  const start = new Date(selectionStartTime);
-  const end = new Date(selectionEndTime);
-
-  if (now < start) {
-    return { open: false, message: `选科将于 ${selectionStartTime} 开始` };
-  }
-  if (now > end) {
-    return { open: false, message: `选科已于 ${selectionEndTime} 结束` };
-  }
-
-  return { open: true, message: '选科进行中' };
-};
-
-/**
- * 获取选科状态（时间是否开放）
+ * 获取选科状态（是否在选科时间内）
  * GET /api/selections/status
  */
 router.get('/status', projectDb, authenticateProject, async (req, res) => {
@@ -110,7 +81,7 @@ router.get('/my', projectDb, authenticateProject, async (req, res) => {
  * 提交/更新选科
  * POST /api/selections
  */
-router.post('/', projectDb, authenticateProject, async (req, res) => {
+router.post('/', projectDb, authenticateProject, validateSelectionSubmit, async (req, res) => {
   try {
     // 检查时间
     const projectId = req.projectId;
