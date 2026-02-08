@@ -120,8 +120,11 @@
         <h4 style="margin-bottom: 1rem; color: var(--text-primary);">管理员凭据</h4>
         <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">设置协作系统的管理员登录账号密码</p>
         <div class="form-group">
-          <label class="form-label">管理员账号</label>
-          <input type="text" id="adminUsername" class="form-input" required placeholder="新管理员账号">
+          <label class="form-label">管理员账号（邮箱）</label>
+          <input type="email" id="adminUsername" class="form-input" required placeholder="例如：admin@example.com">
+          <small style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem; display: block;">
+            请输入邮箱地址，需符合平台邮箱域名限制
+          </small>
         </div>
         <div class="form-group">
           <label class="form-label">管理员密码</label>
@@ -504,6 +507,50 @@
 
     // 安全设置弹窗
     let adminPasswordStrength = null;
+    let allowedEmailDomains = [];
+    
+    // 加载允许的邮箱域名配置
+    async function loadEmailDomainConfig() {
+      try {
+        const res = await fetch('/api/platform/superadmin/settings', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+          const domainsSetting = result.data.find(s => s.key === 'allowed_email_domains');
+          if (domainsSetting && domainsSetting.value) {
+            allowedEmailDomains = domainsSetting.value.split(',').map(d => d.trim()).filter(d => d);
+          } else {
+            allowedEmailDomains = []; // 空表示不限制
+          }
+        }
+      } catch (err) {
+        console.warn('获取邮箱域名配置失败，将不限制邮箱域名', err);
+        allowedEmailDomains = [];
+      }
+    }
+    
+    // 验证邮箱域名
+    function validateEmailDomain(email) {
+      if (!email || !email.includes('@')) {
+        return { valid: false, message: '请输入有效的邮箱地址' };
+      }
+      
+      // 如果没有设置域名限制，则不验证
+      if (allowedEmailDomains.length === 0) {
+        return { valid: true };
+      }
+      
+      const emailDomain = email.split('@')[1];
+      if (!allowedEmailDomains.includes(emailDomain)) {
+        return { 
+          valid: false, 
+          message: `邮箱域名不在允许列表中。允许的域名：${allowedEmailDomains.join(', ')}` 
+        };
+      }
+      
+      return { valid: true };
+    }
     
     function showSecurityModal(projectId) {
       document.getElementById('securityProjectId').value = projectId;
@@ -519,6 +566,9 @@
         passwordInput: document.getElementById('adminPassword'),
         container: document.getElementById('adminPasswordStrengthContainer')
       });
+      
+      // 加载邮箱域名配置
+      loadEmailDomainConfig();
     }
 
     function closeSecurityModal() {
@@ -528,10 +578,24 @@
     document.getElementById('securityForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const projectId = document.getElementById('securityProjectId').value;
-      const username = document.getElementById('adminUsername').value;
+      const username = document.getElementById('adminUsername').value.trim();
       const password = document.getElementById('adminPassword').value;
 
       console.log('[Security] Submitting credentials...', { projectId, username });
+
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(username)) {
+        showToast('请输入有效的邮箱地址', 'error');
+        return;
+      }
+
+      // 验证邮箱域名
+      const domainValidation = validateEmailDomain(username);
+      if (!domainValidation.valid) {
+        showToast(domainValidation.message, 'error');
+        return;
+      }
 
       // 验证密码强度
       if (adminPasswordStrength && !adminPasswordStrength.isValid()) {
@@ -559,14 +623,14 @@
         console.log('[Security] Response data:', result);
 
         if (result.code === 200) {
-          alert('管理员凭据已更新！\\n新账号: ' + username);
+          showToast('管理员凭据已更新！新账号: ' + username, 'success');
           closeSecurityModal();
         } else {
-          alert(result.message || '设置失败');
+          showToast(result.message || '设置失败', 'error');
         }
       } catch (err) {
         console.error('[Security] Error:', err);
-        alert('设置失败，请稍后重试: ' + err.message);
+        showToast('设置失败，请稍后重试: ' + err.message, 'error');
       }
     });
 

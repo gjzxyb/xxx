@@ -469,6 +469,7 @@ async function getProjectRole(userId, projectId) {
 /**
  * 设置项目管理员凭据
  * PUT /api/platform/projects/:projectId/admin-credentials
+ * 安全性：强制邮箱格式，并受平台邮箱域名限制
  */
 router.put('/:projectId/admin-credentials', authenticatePlatform, async (req, res) => {
   try {
@@ -486,6 +487,28 @@ router.put('/:projectId/admin-credentials', authenticatePlatform, async (req, re
 
     if (!username || !password) {
       return res.status(400).json({ code: 400, message: '账号和密码不能为空' });
+    }
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(username)) {
+      return res.status(400).json({ code: 400, message: '管理员账号必须是有效的邮箱地址' });
+    }
+
+    // 验证邮箱域名限制（与平台注册规则一致）
+    const SystemConfig = require('../models/SystemConfig');
+    const allowedDomains = await SystemConfig.getValue('allowed_email_domains', null);
+    if (allowedDomains) {
+      const domains = allowedDomains.split(',').map(d => d.trim()).filter(d => d);
+      if (domains.length > 0) {
+        const emailDomain = username.split('@')[1];
+        if (!domains.includes(emailDomain)) {
+          return res.status(403).json({ 
+            code: 403, 
+            message: `邮箱域名不在允许列表中。允许的域名：${domains.join(', ')}` 
+          });
+        }
+      }
     }
 
     if (password.length < 6) {

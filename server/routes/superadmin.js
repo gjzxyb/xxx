@@ -6,6 +6,35 @@ const { authenticatePlatform, requireSuperAdmin } = require('../middleware/platf
 const { validatePagination } = require('../utils/validation');
 
 /**
+ * 获取单个用户详情
+ * GET /api/platform/superadmin/users/:userId
+ */
+router.get('/users/:userId', authenticatePlatform, requireSuperAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await PlatformUser.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+    
+    // 获取用户的项目数
+    const projectCount = await Project.count({ where: { ownerId: user.id } });
+    
+    res.json({
+      code: 200,
+      data: {
+        ...user.toJSON(),
+        projectCount
+      }
+    });
+  } catch (error) {
+    console.error('获取用户详情错误:', error);
+    res.status(500).json({ code: 500, message: '获取用户详情失败' });
+  }
+});
+
+/**
  * 获取所有用户列表
  * GET /api/platform/superadmin/users
  */
