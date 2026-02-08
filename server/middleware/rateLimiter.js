@@ -1,43 +1,81 @@
+/**
+ * 速率限制中间件
+ * 防止 API 滥用和暴力破解攻击
+ */
 const rateLimit = require('express-rate-limit');
 
 /**
- * 速率限制配置
- * 防止暴力破解和DDoS攻击
+ * 通用 API 速率限制
+ * 15分钟内最多 100 个请求
  */
-
-// 通用API速率限制
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: process.env.RATE_LIMIT_MAX || 100, // 限制每个IP 100个请求
+  max: 100, // 限制请求数
   message: {
     code: 429,
     message: '请求过于频繁，请稍后再试'
   },
-  standardHeaders: true, // 返回 `RateLimit-*` headers
-  legacyHeaders: false, // 禁用 `X-RateLimit-*` headers
+  standardHeaders: true, // 返回速率限制信息在 `RateLimit-*` 头中
+  legacyHeaders: false, // 禁用 `X-RateLimit-*` 头
+  // 跳过成功的健康检查请求
   skip: (req) => {
-    // 开发环境可以跳过限制
-    return process.env.NODE_ENV === 'development' && process.env.SKIP_RATE_LIMIT === 'true';
+    return req.path === '/api/health';
   }
 });
 
-// 严格的登录/注册速率限制（防止暴力破解）
+/**
+ * 认证接口速率限制（更严格）
+ * 15分钟内最多 5 次登录/注册尝试
+ */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: process.env.AUTH_RATE_LIMIT_MAX || 5, // 限制每个IP 5次尝试
-  skipSuccessfulRequests: true, // 成功的请求不计入限制
+  max: 5, // 限制请求数
   message: {
     code: 429,
-    message: '登录尝试次数过多，请15分钟后再试'
+    message: '登录尝试过多，请15分钟后再试'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true // 成功的请求不计入限制
+});
+
+/**
+ * 管理员操作速率限制
+ * 15分钟内最多 50 个请求
+ */
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: {
+    code: 429,
+    message: '管理操作过于频繁，请稍后再试'
   },
   standardHeaders: true,
   legacyHeaders: false
 });
 
-// 密码重置限制
-const passwordResetLimiter = rateLimit({
+/**
+ * 验证码发送速率限制（非常严格）
+ * 1小时内最多 3 次
+ */
+const verificationCodeLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1小时
-  max: 3, // 限制每个IP 3次
+  max: 3,
+  message: {
+    code: 429,
+    message: '验证码发送次数过多，请1小时后再试'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+/**
+ * 密码重置速率限制
+ * 1小时内最多 3 次
+ */
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
   message: {
     code: 429,
     message: '密码重置请求过多，请1小时后再试'
@@ -46,22 +84,28 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// 文件上传限制
+/**
+ * 文件上传速率限制
+ * 1小时内最多 20 次
+ */
 const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 10, // 限制每个IP 10次上传
+  windowMs: 60 * 60 * 1000,
+  max: 20,
   message: {
     code: 429,
-    message: '上传请求过多，请稍后再试'
+    message: '文件上传次数过多，请稍后再试'
   },
   standardHeaders: true,
   legacyHeaders: false
 });
 
-// 管理员操作限制（相对宽松，但仍有限制）
-const adminLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 200, // 管理员操作较多
+/**
+ * 严格的速率限制（用于敏感操作）
+ * 1小时内最多 10 次
+ */
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
   message: {
     code: 429,
     message: '操作过于频繁，请稍后再试'
@@ -73,7 +117,9 @@ const adminLimiter = rateLimit({
 module.exports = {
   apiLimiter,
   authLimiter,
+  adminLimiter,
+  verificationCodeLimiter,
   passwordResetLimiter,
   uploadLimiter,
-  adminLimiter
+  strictLimiter
 };

@@ -175,11 +175,17 @@
               displayMessage += ` | 截止时间: ${formatDateTime(endTime)}`;
             }
             statusAlert.className = 'alert alert-success mb-4';
-            statusAlert.innerHTML = `<span>${displayMessage}</span>`;
+            const span = document.createElement('span');
+            safeDOM.setText(span, displayMessage);
+            statusAlert.innerHTML = '';
+            statusAlert.appendChild(span);
           } else {
             // 选科未开放
             statusAlert.className = 'alert alert-warning mb-4';
-            statusAlert.innerHTML = `<span>⏰ ${message}</span>`;
+            const span = document.createElement('span');
+            safeDOM.setText(span, `⏰ ${message}`);
+            statusAlert.innerHTML = '';
+            statusAlert.appendChild(span);
 
             // 显示友好提示
             if (startTime || endTime) {
@@ -194,7 +200,10 @@
           }
         } else {
           statusAlert.className = 'alert alert-danger mb-4';
-          statusAlert.innerHTML = `<span>❌ ${result.message || '获取选科状态失败'}</span>`;
+          const span = document.createElement('span');
+          safeDOM.setText(span, `❌ ${result.message || '获取选科状态失败'}`);
+          statusAlert.innerHTML = '';
+          statusAlert.appendChild(span);
         }
       } catch (error) {
         console.error('获取选科状态错误:', error);
@@ -225,8 +234,17 @@
           }
         } else {
           console.error('加载学科失败:', result.message);
-          phGrid.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger);">加载失败: ${result.message || '未知错误'}</div>`;
-          elGrid.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger);">加载失败: ${result.message || '未知错误'}</div>`;
+          const errorDiv1 = document.createElement('div');
+          errorDiv1.style.cssText = 'padding: 2rem; text-align: center; color: var(--danger);';
+          safeDOM.setText(errorDiv1, '加载失败: ' + (result.message || '未知错误'));
+          phGrid.innerHTML = '';
+          phGrid.appendChild(errorDiv1);
+          
+          const errorDiv2 = document.createElement('div');
+          errorDiv2.style.cssText = 'padding: 2rem; text-align: center; color: var(--danger);';
+          safeDOM.setText(errorDiv2, '加载失败: ' + (result.message || '未知错误'));
+          elGrid.innerHTML = '';
+          elGrid.appendChild(errorDiv2);
         }
       } catch (error) {
         console.error('加载学科异常:', error);
@@ -293,14 +311,33 @@
       card.dataset.type = type;
       card.dataset.name = subject.name;
       
-      card.innerHTML = `
-        <div class="subject-name">${subject.name}</div>
-        <div class="subject-desc">${subject.description || ''}</div>
-        <div class="subject-meta">
-          <span class="subject-capacity">剩余名额: ${remaining}</span>
-          ${isSelected ? '<span class="badge badge-success">已选</span>' : ''}
-        </div>
-      `;
+      // 使用安全的DOM操作防止XSS
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'subject-name';
+      nameDiv.textContent = subject.name;
+      
+      const descDiv = document.createElement('div');
+      descDiv.className = 'subject-desc';
+      descDiv.textContent = subject.description || '';
+      
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'subject-meta';
+      
+      const capacitySpan = document.createElement('span');
+      capacitySpan.className = 'subject-capacity';
+      capacitySpan.textContent = `剩余名额: ${remaining}`;
+      metaDiv.appendChild(capacitySpan);
+      
+      if (isSelected) {
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = 'badge badge-success';
+        badgeSpan.textContent = '已选';
+        metaDiv.appendChild(badgeSpan);
+      }
+      
+      card.appendChild(nameDiv);
+      card.appendChild(descDiv);
+      card.appendChild(metaDiv);
       
       return card;
     }

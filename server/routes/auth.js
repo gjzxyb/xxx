@@ -170,21 +170,18 @@ router.get('/profile', authenticate, async (req, res) => {
  */
 router.put('/password', projectDb, authenticateProject, async (req, res) => {
   try {
-    console.log('========== 修改密码请求开始 ==========');
-    console.log('用户:', req.user?.studentId, req.user?.name);
-    console.log('请求体:', JSON.stringify(req.body, null, 2));
+    // 安全日志：记录操作但不记录敏感信息
+    console.log('修改密码请求开始 - 用户ID:', req.user?.id);
     
     const { oldPassword, newPassword } = req.body;
 
     // 基本验证
     if (!oldPassword || !newPassword) {
-      console.error('缺少必需字段');
       return error(res, '请输入原密码和新密码');
     }
 
     // 检查新密码格式
     if (newPassword.length < 8 || newPassword.length > 32) {
-      console.error('密码长度不符合要求:', newPassword.length);
       return res.status(400).json({
         code: 400,
         message: '密码长度必须在8-32个字符之间',
@@ -193,7 +190,6 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
     }
 
     if (!/[A-Z]/.test(newPassword)) {
-      console.error('密码缺少大写字母');
       return res.status(400).json({
         code: 400,
         message: '密码必须包含至少一个大写字母',
@@ -202,7 +198,6 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
     }
 
     if (!/[a-z]/.test(newPassword)) {
-      console.error('密码缺少小写字母');
       return res.status(400).json({
         code: 400,
         message: '密码必须包含至少一个小写字母',
@@ -211,7 +206,6 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
     }
 
     if (!/[0-9]/.test(newPassword)) {
-      console.error('密码缺少数字');
       return res.status(400).json({
         code: 400,
         message: '密码必须包含至少一个数字',
@@ -224,7 +218,6 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
     const forbiddenPatterns = ['123456', 'password', 'qwerty', 'admin', 'abc123'];
     for (const pattern of forbiddenPatterns) {
       if (lowerPassword.includes(pattern)) {
-        console.error('密码包含禁用词:', pattern);
         return res.status(400).json({
           code: 400,
           message: '密码过于简单，请使用更复杂的密码',
@@ -234,25 +227,22 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
     }
 
     // 验证旧密码
-    console.log('验证旧密码...');
     const isValid = await req.user.validatePassword(oldPassword);
     if (!isValid) {
-      console.error('旧密码错误');
       return error(res, '原密码错误');
     }
 
     // 更新密码
-    console.log('更新密码...');
     req.user.password = newPassword;
     await req.user.save();
 
-    console.log('密码修改成功!');
-    console.log('========== 修改密码请求结束 ==========');
+    // 安全日志：记录成功但不记录密码信息
+    console.log('密码修改成功 - 用户ID:', req.user?.id);
     success(res, null, '密码修改成功');
   } catch (err) {
-    console.error('========== 修改密码异常 ==========');
-    console.error(err);
-    error(res, '修改密码失败: ' + err.message, 500);
+    // 安全日志：记录错误但不暴露敏感信息
+    console.error('修改密码失败 - 用户ID:', req.user?.id, '错误:', err.message);
+    error(res, '修改密码失败，请稍后重试', 500);
   }
 });
 

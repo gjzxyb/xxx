@@ -952,38 +952,53 @@
         const result = await api.admin.resetPassword(id);
 
         if (result.code === 200) {
-          const newPassword = result.data.newPassword;
+          // 安全修复：从消息中提取密码，或使用 data.newPassword（如果存在）
+          const message = result.data.message || '';
+          const newPassword = result.data.newPassword || message.match(/新密码为:\s*(\S+)/)?.[1] || '';
           
-          // 创建显示密码的对话框
+          // 创建显示密码的对话框 - 使用安全的 DOM 操作
           const passwordDialog = document.createElement('div');
           passwordDialog.className = 'modal-overlay active';
-          passwordDialog.innerHTML = `
-            <div class="modal" style="max-width: 500px;">
-              <div class="modal-header">
-                <h3 class="modal-title">✅ 密码重置成功</h3>
-              </div>
-              <div class="modal-body" style="padding: 2rem;">
-                <p style="margin-bottom: 1rem; color: var(--text-primary);">学生 <strong>${studentId}</strong> 的新密码：</p>
-                <div style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-                  <code style="font-size: 1.2rem; font-weight: 600; color: var(--primary); flex: 1;" id="newPasswordText">${newPassword}</code>
-                  <button class="btn btn-sm btn-secondary" onclick="copyPassword('${newPassword}')" style="margin-left: 1rem;">
-                    📋 复制
-                  </button>
-                </div>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">
-                  ⚠️ 请务必将此密码告知学生，窗口关闭后将无法再次查看。
-                </p>
-              </div>
-              <div class="flex justify-center" style="padding: 0 2rem 2rem;">
-                <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">我已记下密码</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(passwordDialog);
           
-          // 添加复制密码函数
-          window.copyPassword = function(password) {
-            navigator.clipboard.writeText(password).then(() => {
+          const modal = document.createElement('div');
+          modal.className = 'modal';
+          modal.style.maxWidth = '500px';
+          
+          // 模态框头部
+          const modalHeader = document.createElement('div');
+          modalHeader.className = 'modal-header';
+          const modalTitle = document.createElement('h3');
+          modalTitle.className = 'modal-title';
+          modalTitle.textContent = '✅ 密码重置成功';
+          modalHeader.appendChild(modalTitle);
+          
+          // 模态框主体
+          const modalBody = document.createElement('div');
+          modalBody.className = 'modal-body';
+          modalBody.style.padding = '2rem';
+          
+          const description = document.createElement('p');
+          description.style.cssText = 'margin-bottom: 1rem; color: var(--text-primary);';
+          description.textContent = '学生 ';
+          const studentIdStrong = document.createElement('strong');
+          safeDOM.setText(studentIdStrong, studentId);
+          description.appendChild(studentIdStrong);
+          description.appendChild(document.createTextNode(' 的新密码：'));
+          
+          const passwordBox = document.createElement('div');
+          passwordBox.style.cssText = 'background: var(--bg-hover); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;';
+          
+          const passwordCode = document.createElement('code');
+          passwordCode.id = 'newPasswordText';
+          passwordCode.style.cssText = 'font-size: 1.2rem; font-weight: 600; color: var(--primary); flex: 1;';
+          safeDOM.setText(passwordCode, newPassword);
+          
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'btn btn-sm btn-secondary';
+          copyBtn.style.marginLeft = '1rem';
+          copyBtn.textContent = '📋 复制';
+          copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(newPassword).then(() => {
               showToast('密码已复制到剪贴板', 'success');
             }).catch(() => {
               // 降级方案：选中文本
@@ -995,9 +1010,42 @@
               selection.addRange(range);
               showToast('请手动复制选中的密码', 'info');
             });
-          };
-        } else {
-          showToast(result.message || '重置失败', 'error');
+          });
+          
+          passwordBox.appendChild(passwordCode);
+          passwordBox.appendChild(copyBtn);
+          
+          const warning = document.createElement('p');
+          warning.style.cssText = 'font-size: 0.9rem; color: var(--text-secondary);';
+          warning.textContent = '⚠️ 请务必将此密码告知学生，窗口关闭后将无法再次查看。';
+          
+          modalBody.appendChild(description);
+          modalBody.appendChild(passwordBox);
+          modalBody.appendChild(warning);
+          
+          // 模态框底部
+          const modalFooter = document.createElement('div');
+          modalFooter.className = 'flex justify-center';
+          modalFooter.style.padding = '0 2rem 2rem';
+          
+          const closeBtn = document.createElement('button');
+          closeBtn.className = 'btn btn-primary';
+          closeBtn.textContent = '我已记下密码';
+          closeBtn.addEventListener('click', () => {
+            passwordDialog.remove();
+          });
+          
+          modalFooter.appendChild(closeBtn);
+          
+          modal.appendChild(modalHeader);
+          modal.appendChild(modalBody);
+          modal.appendChild(modalFooter);
+          passwordDialog.appendChild(modal);
+          
+          document.body.appendChild(passwordDialog);
+          
+          // 刷新学生列表
+          loadStudents();
         }
       } catch (err) {
         console.error('重置密码错误:', err);
@@ -1415,17 +1463,36 @@
             return;
           }
 
-          // 显示预览
+          // 显示预览 - 使用安全的DOM操作防止XSS
           document.getElementById('previewCount').textContent = importData.length;
           const previewRows = importData.slice(0, 50); // 最多显示50条
-          document.getElementById('importPreviewTable').innerHTML = previewRows.map(s => `
-            <tr>
-              <td>${s.studentId}</td>
-              <td>${s.name}</td>
-              <td>${s.className || '-'}</td>
-              <td>${s.password === '123456' ? '(默认)' : '******'}</td>
-            </tr>
-          `).join('') + (importData.length > 50 ? '<tr><td colspan="4" class="text-center">... 还有 ' + (importData.length - 50) + ' 条数据</td></tr>' : '');
+          const tbody = document.getElementById('importPreviewTable');
+          safeDOM.empty(tbody);
+          
+          previewRows.forEach(s => {
+            const tr = safeDOM.createElement('tr', {
+              children: [
+                safeDOM.createElement('td', { text: s.studentId }),
+                safeDOM.createElement('td', { text: s.name }),
+                safeDOM.createElement('td', { text: s.className || '-' }),
+                safeDOM.createElement('td', { text: s.password === '123456' ? '(默认)' : '******' })
+              ]
+            });
+            tbody.appendChild(tr);
+          });
+          
+          if (importData.length > 50) {
+            const moreTr = safeDOM.createElement('tr', {
+              children: [
+                safeDOM.createElement('td', { 
+                  attrs: { colspan: '4' },
+                  className: 'text-center',
+                  text: `... 还有 ${importData.length - 50} 条数据`
+                })
+              ]
+            });
+            tbody.appendChild(moreTr);
+          }
 
           document.getElementById('importPreview').style.display = 'block';
           document.getElementById('submitImportBtn').disabled = false;
@@ -1468,19 +1535,45 @@
 
         if (result.code === 200) {
           const { success, failed, errors } = result.data;
-          let html = `<div class="alert" style="background: var(--success); color: white; padding: 1rem; border-radius: 8px;">
-            <strong>✅ 导入完成</strong><br>
-            成功: ${success} 人，失败: ${failed} 人
-          </div>`;
+          
+          // 使用安全的DOM操作防止XSS
+          safeDOM.empty(resultDiv);
+          
+          const successDiv = safeDOM.createElement('div', {
+            className: 'alert',
+            attrs: {
+              style: 'background: var(--success); color: white; padding: 1rem; border-radius: 8px;'
+            },
+            children: [
+              safeDOM.createElement('strong', { text: '✅ 导入完成' }),
+              document.createElement('br'),
+              document.createTextNode(`成功: ${success} 人，失败: ${failed} 人`)
+            ]
+          });
+          resultDiv.appendChild(successDiv);
 
           if (errors && errors.length > 0) {
-            html += `<div style="margin-top: 0.5rem; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--danger);">
-              ${errors.slice(0, 10).map(e => `<div>• ${e}</div>`).join('')}
-              ${errors.length > 10 ? `<div>... 还有 ${errors.length - 10} 条错误</div>` : ''}
-            </div>`;
+            const errorsDiv = safeDOM.createElement('div', {
+              attrs: {
+                style: 'margin-top: 0.5rem; max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: var(--danger);'
+              }
+            });
+            
+            errors.slice(0, 10).forEach(e => {
+              const errorItem = safeDOM.createElement('div', { text: `• ${e}` });
+              errorsDiv.appendChild(errorItem);
+            });
+            
+            if (errors.length > 10) {
+              const moreErrors = safeDOM.createElement('div', { 
+                text: `... 还有 ${errors.length - 10} 条错误` 
+              });
+              errorsDiv.appendChild(moreErrors);
+            }
+            
+            resultDiv.appendChild(errorsDiv);
           }
 
-          resultDiv.innerHTML = html;
           resultDiv.style.display = 'block';
 
           // 刷新学生列表

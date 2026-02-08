@@ -29,6 +29,7 @@ const superadminRoutes = require('./routes/superadmin');
 // 安全中间件
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { csrfMiddleware, csrfVerify } = require('./middleware/csrf');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,12 +80,27 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   credentials: true,
   maxAge: 86400 // 24小时
 }));
+
+// Cookie 解析器（CSRF 保护需要）
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 app.use(express.json({ limit: '10mb' })); // 限制请求体大小
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ============================================
+// CSRF 保护
+// ============================================
+
+// 为所有请求添加 CSRF token
+app.use(csrfMiddleware);
+
+// 对修改数据的 API 进行 CSRF 验证
+app.use('/api/', csrfVerify);
 
 // ============================================
 // 速率限制

@@ -407,10 +407,16 @@
         const { open, message, startTime, endTime } = result.data;
         if (open) {
           statusAlert.className = 'alert alert-success mb-4';
-          statusAlert.innerHTML = `<span>✅ ${message} | 截止时间: ${endTime}</span>`;
+          const span = document.createElement('span');
+          safeDOM.setText(span, `✅ ${message} | 截止时间: ${endTime}`);
+          statusAlert.innerHTML = '';
+          statusAlert.appendChild(span);
         } else {
           statusAlert.className = 'alert alert-warning mb-4';
-          statusAlert.innerHTML = `<span>⏰ ${message}</span>`;
+          const span = document.createElement('span');
+          safeDOM.setText(span, `⏰ ${message}`);
+          statusAlert.innerHTML = '';
+          statusAlert.appendChild(span);
         }
       }
     }
@@ -583,109 +589,231 @@
           
           console.log('Analysis data:', analysis); // 调试信息
         
-        // 更新选科详情 - 使用两栏布局
-        content.innerHTML = `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <!-- 左侧：已选科目 + 选科说明 -->
-            <div>
-              <h4 style="margin-bottom: 1rem; color: var(--primary);">📝 已选科目</h4>
-              <div class="selection-display" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <div class="subject-item physics-history" style="margin-bottom: 1rem;">
-                  <label style="font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">首选科目</label>
-                  <div class="value" style="font-size: 1.2rem; color: var(--primary); font-weight: 600;">
-                    ${sel.physicsHistorySubject?.name || '-'}
-                  </div>
-                </div>
-                <div class="subject-item electives" style="margin-bottom: 1rem;">
-                  <label style="font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">再选科目</label>
-                  <div class="value" style="font-size: 1.2rem; color: var(--primary); font-weight: 600;">
-                    ${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}
-                  </div>
-                </div>
-                <div class="submit-time" style="font-size: 0.9rem; color: var(--text-muted); padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                  提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}
-                </div>
-              </div>
-              <a href="/selection.html?projectId=${projectId}" class="btn btn-secondary" style="width: 100%; margin-bottom: 1.5rem;">修改选科</a>
-              
-              <!-- 新高考 3+1+2 选科说明 -->
-              <div style="background: rgba(14, 165, 233, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--primary);">
-                <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.1rem;">📖 新高考 3+1+2 选科说明</h4>
-                <div style="color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem;">
-                  <p style="margin-bottom: 0.5rem;"><strong style="color: var(--primary);">1</strong>：物理、历史（首选科目，二选一）</p>
-                  <p style="margin-bottom: 0.5rem;"><strong style="color: var(--primary);">2</strong>：化学、生物、政治、地理（再选科目，四选二）</p>
-                  <p style="margin-bottom: 1rem;"><strong style="color: var(--primary);">3</strong>：语文、数学、外语（必考科目，无需选择）</p>
-                  <div style="background: rgba(245, 158, 11, 0.1); padding: 0.75rem; border-radius: 6px; border-left: 3px solid var(--warning);">
-                    <span style="color: var(--text-primary); font-size: 0.9rem;">⚠️ 选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 右侧：组合分析指南 -->
-            <div>
-              <h4 style="margin-bottom: 1rem; color: var(--primary);">🎯 组合分析指南</h4>
-              ${analysis ? `
-                <div style="background: linear-gradient(135deg, ${analysis.color}15 0%, ${analysis.color}05 100%); padding: 1.5rem; border-radius: 8px; border-left: 4px solid ${analysis.color};">
-                  <div style="margin-bottom: 1rem;">
-                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem;">${analysis.category}</div>
-                    <h5 style="color: ${analysis.color}; font-weight: 600; font-size: 1.1rem; margin: 0;">
-                      ${sel.physicsHistorySubject?.name} + ${sel.electiveOneSubject?.name} + ${sel.electiveTwoSubject?.name}
-                    </h5>
-                  </div>
-
-                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem;">📊 专业覆盖率</div>
-                    <div style="font-weight: 600; color: ${analysis.color}; font-size: 1.1rem;">${analysis.coverage}</div>
-                  </div>
-
-                  ${analysis.advantages ? `
-                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-size: 0.85rem; color: #10b981; margin-bottom: 0.3rem; font-weight: 600;">✓ 优势</div>
-                    <div style="color: #1f2937; line-height: 1.6;">${analysis.advantages}</div>
-                  </div>
-                  ` : ''}
-
-                  ${analysis.disadvantages ? `
-                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-size: 0.85rem; color: #ef4444; margin-bottom: 0.3rem; font-weight: 600;">✗ 劣势</div>
-                    <div style="color: #1f2937; line-height: 1.6;">${analysis.disadvantages}</div>
-                  </div>
-                  ` : ''}
-
-                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem; font-weight: 600;">📚 可选专业面</div>
-                    <div style="color: #1f2937; line-height: 1.6;">${analysis.majors}</div>
-                  </div>
-
-                  <div style="background: #ffffff; padding: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem; font-weight: 600;">💼 就业方向</div>
-                    <div style="color: #1f2937; line-height: 1.6;">${analysis.careers}</div>
-                  </div>
-                </div>
-              ` : `
-                <div style="background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-muted);">
-                  <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
-                  <p>暂无该组合的分析数据</p>
-                </div>
-              `}
+        // 更新选科详情 - 使用安全的DOM操作防止XSS
+        safeDOM.empty(content);
+        
+        const gridContainer = document.createElement('div');
+        gridContainer.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;';
+        
+        // 左侧：已选科目 + 选科说明
+        const leftCol = document.createElement('div');
+        
+        // 已选科目标题
+        const leftTitle = document.createElement('h4');
+        leftTitle.style.cssText = 'margin-bottom: 1rem; color: var(--primary);';
+        leftTitle.textContent = '📝 已选科目';
+        leftCol.appendChild(leftTitle);
+        
+        // 选科详情卡片
+        const selectionDisplay = document.createElement('div');
+        selectionDisplay.className = 'selection-display';
+        selectionDisplay.style.cssText = 'background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;';
+        
+        // 首选科目
+        const phItem = document.createElement('div');
+        phItem.className = 'subject-item physics-history';
+        phItem.style.cssText = 'margin-bottom: 1rem;';
+        const phLabel = document.createElement('label');
+        phLabel.style.cssText = 'font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;';
+        phLabel.textContent = '首选科目';
+        const phValue = document.createElement('div');
+        phValue.className = 'value';
+        phValue.style.cssText = 'font-size: 1.2rem; color: var(--primary); font-weight: 600;';
+        safeDOM.setText(phValue, sel.physicsHistorySubject?.name || '-');
+        phItem.appendChild(phLabel);
+        phItem.appendChild(phValue);
+        selectionDisplay.appendChild(phItem);
+        
+        // 再选科目
+        const electiveItem = document.createElement('div');
+        electiveItem.className = 'subject-item electives';
+        electiveItem.style.cssText = 'margin-bottom: 1rem;';
+        const electiveLabel = document.createElement('label');
+        electiveLabel.style.cssText = 'font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;';
+        electiveLabel.textContent = '再选科目';
+        const electiveValue = document.createElement('div');
+        electiveValue.className = 'value';
+        electiveValue.style.cssText = 'font-size: 1.2rem; color: var(--primary); font-weight: 600;';
+        safeDOM.setText(electiveValue, `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`);
+        electiveItem.appendChild(electiveLabel);
+        electiveItem.appendChild(electiveValue);
+        selectionDisplay.appendChild(electiveItem);
+        
+        // 提交时间
+        const submitTime = document.createElement('div');
+        submitTime.className = 'submit-time';
+        submitTime.style.cssText = 'font-size: 0.9rem; color: var(--text-muted); padding-top: 1rem; border-top: 1px solid var(--border-color);';
+        safeDOM.setText(submitTime, '提交时间: ' + (sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'));
+        selectionDisplay.appendChild(submitTime);
+        
+        leftCol.appendChild(selectionDisplay);
+        
+        // 修改选科按钮
+        const modifyBtn = document.createElement('a');
+        modifyBtn.href = '/selection.html?projectId=' + encodeURIComponent(projectId);
+        modifyBtn.className = 'btn btn-secondary';
+        modifyBtn.style.cssText = 'width: 100%; margin-bottom: 1.5rem;';
+        modifyBtn.textContent = '修改选科';
+        leftCol.appendChild(modifyBtn);
+        
+        // 选科说明
+        const infoBox = document.createElement('div');
+        infoBox.style.cssText = 'background: rgba(14, 165, 233, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--primary);';
+        infoBox.innerHTML = `
+          <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.1rem;">📖 新高考 3+1+2 选科说明</h4>
+          <div style="color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem;">
+            <p style="margin-bottom: 0.5rem;"><strong style="color: var(--primary);">1</strong>：物理、历史（首选科目，二选一）</p>
+            <p style="margin-bottom: 0.5rem;"><strong style="color: var(--primary);">2</strong>：化学、生物、政治、地理（再选科目，四选二）</p>
+            <p style="margin-bottom: 1rem;"><strong style="color: var(--primary);">3</strong>：语文、数学、外语（必考科目，无需选择）</p>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 0.75rem; border-radius: 6px; border-left: 3px solid var(--warning);">
+              <span style="color: var(--text-primary); font-size: 0.9rem;">⚠️ 选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
             </div>
           </div>
         `;
+        leftCol.appendChild(infoBox);
+        
+        gridContainer.appendChild(leftCol);
+        
+        // 右侧：组合分析指南
+        const rightCol = document.createElement('div');
+        const rightTitle = document.createElement('h4');
+        rightTitle.style.cssText = 'margin-bottom: 1rem; color: var(--primary);';
+        rightTitle.textContent = '🎯 组合分析指南';
+        rightCol.appendChild(rightTitle);
+        
+        if (analysis) {
+          const analysisBox = document.createElement('div');
+          // 注意：analysis.color 需要验证是否为有效颜色值
+          const safeColor = /^#[0-9A-Fa-f]{6}$/.test(analysis.color) ? analysis.color : '#0ea5e9';
+          analysisBox.style.cssText = `background: linear-gradient(135deg, ${safeColor}15 0%, ${safeColor}05 100%); padding: 1.5rem; border-radius: 8px; border-left: 4px solid ${safeColor};`;
+          
+          // 组合名称
+          const comboHeader = document.createElement('div');
+          comboHeader.style.cssText = 'margin-bottom: 1rem;';
+          const categoryDiv = document.createElement('div');
+          categoryDiv.style.cssText = 'font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem;';
+          safeDOM.setText(categoryDiv, analysis.category || '');
+          const comboTitle = document.createElement('h5');
+          comboTitle.style.cssText = `color: ${safeColor}; font-weight: 600; font-size: 1.1rem; margin: 0;`;
+          safeDOM.setText(comboTitle, `${sel.physicsHistorySubject?.name} + ${sel.electiveOneSubject?.name} + ${sel.electiveTwoSubject?.name}`);
+          comboHeader.appendChild(categoryDiv);
+          comboHeader.appendChild(comboTitle);
+          analysisBox.appendChild(comboHeader);
+          
+          // 专业覆盖率
+          const coverageBox = document.createElement('div');
+          coverageBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
+          const coverageLabel = document.createElement('div');
+          coverageLabel.style.cssText = 'font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem;';
+          coverageLabel.textContent = '📊 专业覆盖率';
+          const coverageValue = document.createElement('div');
+          coverageValue.style.cssText = `font-weight: 600; color: ${safeColor}; font-size: 1.1rem;`;
+          safeDOM.setText(coverageValue, analysis.coverage || '');
+          coverageBox.appendChild(coverageLabel);
+          coverageBox.appendChild(coverageValue);
+          analysisBox.appendChild(coverageBox);
+          
+          // 优势
+          if (analysis.advantages) {
+            const advBox = document.createElement('div');
+            advBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
+            const advLabel = document.createElement('div');
+            advLabel.style.cssText = 'font-size: 0.85rem; color: #10b981; margin-bottom: 0.3rem; font-weight: 600;';
+            advLabel.textContent = '✓ 优势';
+            const advContent = document.createElement('div');
+            advContent.style.cssText = 'color: #1f2937; line-height: 1.6;';
+            safeDOM.setText(advContent, analysis.advantages);
+            advBox.appendChild(advLabel);
+            advBox.appendChild(advContent);
+            analysisBox.appendChild(advBox);
+          }
+          
+          // 劣势
+          if (analysis.disadvantages) {
+            const disBox = document.createElement('div');
+            disBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
+            const disLabel = document.createElement('div');
+            disLabel.style.cssText = 'font-size: 0.85rem; color: #ef4444; margin-bottom: 0.3rem; font-weight: 600;';
+            disLabel.textContent = '✗ 劣势';
+            const disContent = document.createElement('div');
+            disContent.style.cssText = 'color: #1f2937; line-height: 1.6;';
+            safeDOM.setText(disContent, analysis.disadvantages);
+            disBox.appendChild(disLabel);
+            disBox.appendChild(disContent);
+            analysisBox.appendChild(disBox);
+          }
+          
+          // 可选专业面
+          const majorsBox = document.createElement('div');
+          majorsBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
+          const majorsLabel = document.createElement('div');
+          majorsLabel.style.cssText = 'font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem; font-weight: 600;';
+          majorsLabel.textContent = '📚 可选专业面';
+          const majorsContent = document.createElement('div');
+          majorsContent.style.cssText = 'color: #1f2937; line-height: 1.6;';
+          safeDOM.setText(majorsContent, analysis.majors || '');
+          majorsBox.appendChild(majorsLabel);
+          majorsBox.appendChild(majorsContent);
+          analysisBox.appendChild(majorsBox);
+          
+          // 就业方向
+          const careersBox = document.createElement('div');
+          careersBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
+          const careersLabel = document.createElement('div');
+          careersLabel.style.cssText = 'font-size: 0.85rem; color: #6b7280; margin-bottom: 0.3rem; font-weight: 600;';
+          careersLabel.textContent = '💼 就业方向';
+          const careersContent = document.createElement('div');
+          careersContent.style.cssText = 'color: #1f2937; line-height: 1.6;';
+          safeDOM.setText(careersContent, analysis.careers || '');
+          careersBox.appendChild(careersLabel);
+          careersBox.appendChild(careersContent);
+          analysisBox.appendChild(careersBox);
+          
+          rightCol.appendChild(analysisBox);
+        } else {
+          const emptyBox = document.createElement('div');
+          emptyBox.style.cssText = 'background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-muted);';
+          const emptyIcon = document.createElement('div');
+          emptyIcon.style.cssText = 'font-size: 3rem; margin-bottom: 1rem;';
+          emptyIcon.textContent = '📊';
+          const emptyText = document.createElement('p');
+          emptyText.textContent = '暂无该组合的分析数据';
+          emptyBox.appendChild(emptyIcon);
+          emptyBox.appendChild(emptyText);
+          rightCol.appendChild(emptyBox);
+        }
+        
+        gridContainer.appendChild(rightCol);
+        content.appendChild(gridContainer);
         } else {
           // 未选科时的统计卡片显示
           document.getElementById('statPhysicsHistory').textContent = '未选择';
           document.getElementById('statElectives').textContent = '未选择';
           document.getElementById('statStatus').textContent = '未提交';
           
-          // 更新选科详情
-          content.innerHTML = `
-            <div style="text-align: center; padding: 3rem;">
-              <div style="font-size: 4rem; margin-bottom: 1rem;">📝</div>
-              <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">您还未进行选科</p>
-              <a href="/selection.html?projectId=${projectId}" class="btn btn-primary">开始选科</a>
-            </div>
-          `;
+          // 更新选科详情 - 使用安全的DOM操作
+          safeDOM.empty(content);
+          
+          const emptyState = document.createElement('div');
+          emptyState.style.cssText = 'text-align: center; padding: 3rem;';
+          
+          const icon = document.createElement('div');
+          icon.style.cssText = 'font-size: 4rem; margin-bottom: 1rem;';
+          icon.textContent = '📝';
+          
+          const text = document.createElement('p');
+          text.style.cssText = 'color: var(--text-secondary); margin-bottom: 1.5rem;';
+          text.textContent = '您还未进行选科';
+          
+          const startBtn = document.createElement('a');
+          startBtn.href = '/selection.html?projectId=' + encodeURIComponent(projectId);
+          startBtn.className = 'btn btn-primary';
+          startBtn.textContent = '开始选科';
+          
+          emptyState.appendChild(icon);
+          emptyState.appendChild(text);
+          emptyState.appendChild(startBtn);
+          content.appendChild(emptyState);
         }
       } catch (error) {
         console.error('加载选科数据失败:', error);
