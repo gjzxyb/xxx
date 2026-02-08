@@ -305,6 +305,17 @@
         <p class="login-subtitle">分科自选 SaaS 平台</p>
       </div>
 
+      <!-- 登录方式切换 -->
+      <div class="login-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 0.25rem;">
+        <button type="button" class="login-tab active" id="tabPassword" style="flex: 1; padding: 0.75rem; border: none; background: var(--primary); color: white; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: var(--transition);">
+          密码登录
+        </button>
+        <button type="button" class="login-tab" id="tabCode" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: var(--transition);">
+          验证码登录
+        </button>
+      </div>
+
+      <!-- 密码登录表单 -->
       <form id="loginForm">
         <div class="form-group">
           <label class="form-label">邮箱</label>
@@ -317,6 +328,27 @@
         <button type="submit" class="btn btn-primary" style="width: 100%;">登录</button>
       </form>
 
+      <!-- 验证码登录表单 -->
+      <form id="codeLoginForm" class="hidden">
+        <div class="form-group">
+          <label class="form-label">邮箱地址</label>
+          <input type="email" id="emailCode" class="form-input" placeholder="请输入邮箱" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">验证码</label>
+          <div style="display: flex; gap: 0.75rem;">
+            <input type="text" id="codeInput" class="form-input" placeholder="请输入6位验证码" maxlength="6" required style="flex: 1;">
+            <button type="button" id="sendCodeBtn" class="btn btn-secondary" style="white-space: nowrap; min-width: 120px;">
+              获取验证码
+            </button>
+          </div>
+          <div id="codeHint" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; display: none;">
+            验证码已发送，5分钟内有效
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">登录</button>
+      </form>
+
       <div class="form-footer">
         还没有账号？<a href="register.html" style="color: var(--primary-light);">立即注册</a>
       </div>
@@ -324,7 +356,42 @@
   </div>
 
   <script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    const loginForm = document.getElementById('loginForm');
+    const codeLoginForm = document.getElementById('codeLoginForm');
+    const tabPassword = document.getElementById('tabPassword');
+    const tabCode = document.getElementById('tabCode');
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    const codeHint = document.getElementById('codeHint');
+
+    // 倒计时相关
+    let countdown = 0;
+    let countdownTimer = null;
+
+    // 登录方式切换
+    tabPassword.addEventListener('click', () => {
+      tabPassword.classList.add('active');
+      tabCode.classList.remove('active');
+      tabPassword.style.background = 'var(--primary)';
+      tabPassword.style.color = 'white';
+      tabCode.style.background = 'transparent';
+      tabCode.style.color = 'var(--text-secondary)';
+      loginForm.classList.remove('hidden');
+      codeLoginForm.classList.add('hidden');
+    });
+
+    tabCode.addEventListener('click', () => {
+      tabCode.classList.add('active');
+      tabPassword.classList.remove('active');
+      tabCode.style.background = 'var(--primary)';
+      tabCode.style.color = 'white';
+      tabPassword.style.background = 'transparent';
+      tabPassword.style.color = 'var(--text-secondary)';
+      codeLoginForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+    });
+
+    // 密码登录
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const email = document.getElementById('email').value;
@@ -354,6 +421,127 @@
       } catch (error) {
         console.error('登录错误:', error);
         alert('登录失败，请稍后重试');
+      }
+    });
+
+    // 发送验证码
+    sendCodeBtn.addEventListener('click', async () => {
+      const email = document.getElementById('emailCode').value.trim();
+      
+      if (!email) {
+        alert('请输入邮箱地址');
+        return;
+      }
+
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('请输入有效的邮箱地址');
+        return;
+      }
+
+      try {
+        sendCodeBtn.disabled = true;
+        sendCodeBtn.textContent = '发送中...';
+
+        const response = await fetch('/api/platform/auth/send-verification-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          alert('验证码已发送到您的邮箱');
+          codeHint.style.display = 'block';
+          
+          // 开始倒计时
+          countdown = 60;
+          startCountdown();
+        } else if (result.code === 429) {
+          // 处理限流错误，使用服务器返回的剩余秒数
+          alert(result.message || '请求过于频繁，请稍后再试');
+          countdown = result.remainingSeconds || 60;
+          startCountdown();
+        } else {
+          alert(result.message || '发送失败');
+          sendCodeBtn.disabled = false;
+          sendCodeBtn.textContent = '获取验证码';
+        }
+      } catch (error) {
+        console.error('发送验证码失败:', error);
+        alert('发送失败，请检查网络连接');
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = '获取验证码';
+      }
+    });
+
+    // 倒计时功能
+    function startCountdown() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      
+      countdownTimer = setInterval(() => {
+        countdown--;
+        sendCodeBtn.textContent = `${countdown}秒后重试`;
+        
+        if (countdown <= 0) {
+          clearInterval(countdownTimer);
+          sendCodeBtn.disabled = false;
+          sendCodeBtn.textContent = '获取验证码';
+        }
+      }, 1000);
+    }
+
+    // 验证码登录
+    codeLoginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('emailCode').value.trim();
+      const code = document.getElementById('codeInput').value.trim();
+
+      if (!email || !code) {
+        alert('请输入邮箱和验证码');
+        return;
+      }
+
+      try {
+        const submitBtn = codeLoginForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '登录中...';
+
+        const response = await fetch('/api/platform/auth/login-with-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code })
+        });
+
+        const result = await response.json();
+
+        if (result.code === 200) {
+          localStorage.setItem('platform_token', result.data.token);
+          localStorage.setItem('platform_user', JSON.stringify(result.data.user));
+          
+          alert('登录成功！');
+          
+          setTimeout(() => {
+            if (result.data.user.isSuperAdmin) {
+              window.location.href = 'superadmin.html';
+            } else {
+              window.location.href = 'dashboard.html';
+            }
+          }, 500);
+        } else {
+          alert(result.message || '登录失败');
+          submitBtn.disabled = false;
+          submitBtn.textContent = '登 录';
+        }
+      } catch (error) {
+        console.error('登录失败:', error);
+        alert('登录失败，请稍后重试');
+        const submitBtn = codeLoginForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登 录';
       }
     });
   </script>

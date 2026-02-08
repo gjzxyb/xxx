@@ -9,6 +9,8 @@ const { validateLogin, validatePasswordChange } = require('../middleware/validat
 const loginAttemptTracker = require('../lib/LoginAttemptTracker');
 const tokenBlacklist = require('../lib/TokenBlacklist');
 const jwt = require('jsonwebtoken');
+const emailService = require('../utils/emailService');
+const verificationCodeManager = require('../lib/VerificationCodeManager');
 
 /**
  * 用户登录
@@ -297,28 +299,125 @@ router.get('/password-policy', async (req, res) => {
 });
 
 /**
- * 用户登出
- * POST /api/auth/logout
- * 安全性：将token加入黑名单，实现即时失效
+ * 发送邮箱验证码
+ * POST /api/auth/send-verification-code
  */
-router.post('/logout', authenticate, (req, res) => {
+router.post('/send-verification-code', async (req, res) => {
   try {
-    // 从header获取token
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const decoded = jwt.decode(token);
-      
-      if (decoded && decoded.exp) {
-        // 将token加入黑名单，直到其自然过期
-        tokenBlacklist.add(token, decoded.exp * 1000);
+    const { email, projectId } = req.body;
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return error(res, '请输入有效的邮箱地址', 400);
+    }
+
+    if (!projectId) {
+      return error(res, '缺少项目信息', 400);
+    }
+
+    // 检查邮件服务是否可用
+    if (!emailService.isAvailable()) {
+      await emailService.initialize();
+      if (!emailService.isAvailable()) {
+        return error(res, '邮件服务暂不可用，请使用密码登录', 503);
       }
     }
 
-    success(res, null, '登出成功');
+    // 检查是否可以发送（防止频繁发送）
+    const canSendResult = verificationCodeManager.canSend(email);
+    if (!canSendResult.allowed) {
+      return res.status(429).json({
+        code: 429,
+        message: canSendResult.message,
+        remainingSeconds: canSendResult.remainingSeconds
+      });
+    }
+
+    // 验证该邮箱是否绑定了用户
+    const dbManager = require('../lib/DatabaseManager');
+    if (!dbManager.projectDbExists(projectId)) {
+      return error(res, '项目不存在', 404);
+    }
+
+    const projectModels = await dbManager.getProjectModels(projectId);
+    const { User } = projectModels;
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return error(res, '该邮箱未绑定账号', 404);
+    }
+
+    // 生成验证码
+    const code = verificationCodeManager.generateCode();
+    
+    // 发送邮件
+    await emailService.sendVerificationCode(email, code);
+    
+    // 存储验证码
+    verificationCodeManager.store(email, code);
+
+    success(res, {
+      message: '验证码已发送到您的邮箱',
+      expiryMinutes: 5
+    });
   } catch (err) {
-    console.error('登出错误:', err);
-    error(res, '登出失败', 500);
+    console.error('发送验证码错误:', err);
+    error(res, '发送验证码失败：' + err.message, 500);
+  }
+});
+
+/**
+ * 邮箱验证码登录
+ * POST /api/auth/login-with-code
+ */
+router.post('/login-with-code', async (req, res) => {
+  try {
+    const { email, code, projectId } = req.body;
+
+    // 验证必填字段
+    if (!email || !code) {
+      return error(res, '请输入邮箱和验证码', 400);
+    }
+
+    if (!projectId) {
+      return error(res, '缺少项目信息', 400);
+    }
+
+    // 验证验证码
+    const verifyResult = verificationCodeManager.verify(email, code);
+    if (!verifyResult.valid) {
+      return res.status(400).json({
+        code: 400,
+        message: verifyResult.message,
+        remainingAttempts: verifyResult.remainingAttempts
+      });
+    }
+
+    // 查询用户
+    const dbManager = require('../lib/DatabaseManager');
+    if (!dbManager.projectDbExists(projectId)) {
+      return error(res, '项目不存在', 404);
+    }
+
+    const projectModels = await dbManager.getProjectModels(projectId);
+    const { User } = projectModels;
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return error(res, '用户不存在', 404);
+    }
+
+    // 生成 token
+    const token = generateToken({ ...user.toJSON(), projectId });
+
+    success(res, {
+      token,
+      user: { ...user.toSafeObject(), projectId }
+    }, '登录成功');
+  } catch (err) {
+    console.error('验证码登录错误:', err);
+    error(res, '登录失败，请稍后重试', 500);
   }
 });
 

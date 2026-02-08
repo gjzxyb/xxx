@@ -1,6 +1,6 @@
 // 加载环境变量配置（必须在最开头）
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // 验证环境变量配置
 const { validateEnv, validateProductionEnv } = require('./utils/validateEnv');
@@ -141,6 +141,10 @@ app.use(errorHandler);
 
 // 初始化数据
 async function initializeData() {
+  // 初始化邮件服务
+  const emailService = require('./utils/emailService');
+  await emailService.initialize();
+  
   // 注意：项目管理员不再自动创建
   // 必须通过 SaaS 平台在"安全设置"中为每个项目单独配置管理员凭据
   // 这样可以确保每个项目有独立的管理员账号和密码

@@ -7,6 +7,10 @@ const loginAttemptTracker = require('../lib/LoginAttemptTracker');
 const tokenBlacklist = require('../lib/TokenBlacklist');
 const jwt = require('jsonwebtoken');
 
+// 复用项目系统的邮件和验证码模块（避免代码重复）
+const emailService = require('../utils/emailService');
+const verificationCodeManager = require('../lib/VerificationCodeManager');
+
 // 验证码存储（简单内存存储）
 // ⚠️  警告：此实现不支持多实例部署
 // 生产环境建议：
@@ -277,6 +281,128 @@ router.get('/me', require('../middleware/platformAuth').authenticatePlatform, as
       isSuperAdmin: req.user.isSuperAdmin
     }
   });
+});
+
+/**
+ * 发送邮箱验证码
+ * POST /api/platform/auth/send-verification-code
+ */
+router.post('/send-verification-code', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ code: 400, message: '邮箱不能为空' });
+    }
+
+    // 检查邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ code: 400, message: '邮箱格式不正确' });
+    }
+
+    // 检查用户是否存在
+    const user = await PlatformUser.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '该邮箱未注册' });
+    }
+
+    // 检查是否可以发送（防止频繁发送）
+    const canSend = verificationCodeManager.canSend(email);
+    if (!canSend.allowed) {
+      return res.status(429).json({
+        code: 429,
+        message: canSend.message,
+        remainingSeconds: canSend.remainingSeconds
+      });
+    }
+
+    // 检查邮件服务是否可用
+    if (!emailService.isAvailable()) {
+      // 尝试初始化
+      await emailService.initialize();
+      if (!emailService.isAvailable()) {
+        return res.status(503).json({
+          code: 503,
+          message: '邮件服务暂不可用，请使用密码登录'
+        });
+      }
+    }
+
+    // 生成验证码
+    const code = verificationCodeManager.generateCode();
+
+    // 发送邮件
+    await emailService.sendVerificationCode(email, code);
+
+    // 存储验证码
+    verificationCodeManager.store(email, code);
+
+    res.json({
+      code: 200,
+      message: '验证码已发送，请查收邮件',
+      data: {
+        expiryMinutes: verificationCodeManager.expiryMinutes
+      }
+    });
+  } catch (error) {
+    console.error('发送验证码错误:', error);
+    res.status(500).json({
+      code: 500,
+      message: error.message || '发送验证码失败，请稍后重试'
+    });
+  }
+});
+
+/**
+ * 使用验证码登录
+ * POST /api/platform/auth/login-with-code
+ */
+router.post('/login-with-code', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ code: 400, message: '邮箱和验证码不能为空' });
+    }
+
+    // 验证验证码
+    const result = verificationCodeManager.verify(email, code);
+    if (!result.valid) {
+      return res.status(400).json({
+        code: 400,
+        message: result.message,
+        remainingAttempts: result.remainingAttempts
+      });
+    }
+
+    // 查找用户
+    const user = await PlatformUser.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+
+    // 生成token
+    const token = generatePlatformToken(user);
+
+    res.json({
+      code: 200,
+      message: '登录成功',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          isSuperAdmin: user.isSuperAdmin,
+          maxProjects: user.maxProjects
+        }
+      }
+    });
+  } catch (error) {
+    console.error('验证码登录错误:', error);
+    res.status(500).json({ code: 500, message: '登录失败' });
+  }
 });
 
 /**
