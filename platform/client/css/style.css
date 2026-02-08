@@ -9,25 +9,33 @@
 /* CSS Variables */
 :root {
   /* 主色调 - 霓虹紫蓝渐变 */
-  --primary: #7c3aed;           /* 活力紫 */
+  --primary: #7c3aed;
+  /* 活力紫 */
   --primary-dark: #6d28d9;
   --primary-light: #a78bfa;
 
   /* 辅助强调色 - 青绿活力 */
-  --accent: #06b6d4;            /* 赛博青 */
+  --accent: #06b6d4;
+  /* 赛博青 */
   --accent-light: #22d3ee;
   --accent-glow: rgba(6, 182, 212, 0.4);
 
   /* 功能色优化 */
-  --success: #10b981;           /* 保持 */
-  --warning: #fbbf24;           /* 更温暖 */
-  --danger: #f43f5e;            /* 玫红色 */
-  --info: #38bdf8;              /* 天空蓝 */
+  --success: #10b981;
+  /* 保持 */
+  --warning: #fbbf24;
+  /* 更温暖 */
+  --danger: #f43f5e;
+  /* 玫红色 */
+  --info: #38bdf8;
+  /* 天空蓝 */
 
   /* 背景层次 - 深邃星空感 */
-  --bg-primary: #0a0e1a;        /* 更深的宇宙底色 */
+  --bg-primary: #0a0e1a;
+  /* 更深的宇宙底色 */
   --bg-secondary: #111827;
-  --bg-card: #1a1f35;           /* 带紫调的卡片 */
+  --bg-card: #1a1f35;
+  /* 带紫调的卡片 */
   --bg-hover: #252d4a;
   --bg-glass: rgba(26, 31, 53, 0.8);
 
@@ -444,9 +452,17 @@ a:hover {
 }
 
 @keyframes checkPop {
-  0% { transform: scale(0); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .subject-card.disabled {
@@ -707,6 +723,11 @@ tr:hover td {
 
 /* Login Page */
 .login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
   background: var(--gradient-bg);
   position: relative;
   overflow: hidden;
@@ -740,8 +761,15 @@ tr:hover td {
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(30px, 20px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(30px, 20px);
+  }
 }
 
 .login-card {
@@ -771,10 +799,13 @@ tr:hover td {
 }
 
 @keyframes logo-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 40px rgba(124, 58, 237, 0.4);
     transform: scale(1);
   }
+
   50% {
     box-shadow: 0 0 60px rgba(124, 58, 237, 0.6);
     transform: scale(1.05);

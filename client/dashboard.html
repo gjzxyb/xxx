@@ -76,16 +76,6 @@
 
         <!-- 选科说明 -->
         <div class="card mt-4 animate-fadeIn" style="animation-delay: 0.4s;">
-          <h3 class="card-title mb-3">📖 新高考 3+1+2 选科说明</h3>
-          <div style="color: var(--text-secondary); line-height: 1.8; margin-bottom: 2rem;">
-            <p><strong>3</strong>：语文、数学、外语（必考科目，无需选择）</p>
-            <p><strong>1</strong>：物理、历史（首选科目，二选一）</p>
-            <p><strong>2</strong>：化学、生物、政治、地理（再选科目，四选二）</p>
-            <div class="alert alert-warning mt-3">
-              <span>⚠️ 选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
-            </div>
-          </div>
-
           <!-- 选科组合详细说明 -->
           <h4 style="margin-top: 2rem; margin-bottom: 1.5rem; color: var(--primary);">🎯 选科组合分析指南</h4>
           
@@ -538,7 +528,25 @@
         }
       };
 
-      const key = `${physics}-${elective1}-${elective2}`;
+      // 如果有任何参数为空，返回null
+      if (!physics || !elective1 || !elective2) {
+        return null;
+      }
+
+      // 标准化科目名称（去除空格）
+      physics = physics.trim();
+      elective1 = elective1.trim();
+      elective2 = elective2.trim();
+
+      // 对再选科目进行排序，确保顺序一致
+      // 排序规则：化学 > 生物 > 政治 > 地理
+      const subjectOrder = { '化学': 1, '生物': 2, '政治': 3, '地理': 4 };
+      const electives = [elective1, elective2].sort((a, b) => {
+        return (subjectOrder[a] || 99) - (subjectOrder[b] || 99);
+      });
+
+      const key = `${physics}-${electives[0]}-${electives[1]}`;
+      console.log('组合匹配键:', key); // 调试信息
       return combinations[key] || null;
     }
 
@@ -578,10 +586,10 @@
         // 更新选科详情 - 使用两栏布局
         content.innerHTML = `
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <!-- 左侧：已选科目 -->
+            <!-- 左侧：已选科目 + 选科说明 -->
             <div>
               <h4 style="margin-bottom: 1rem; color: var(--primary);">📝 已选科目</h4>
-              <div class="selection-display" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+              <div class="selection-display" style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
                 <div class="subject-item physics-history" style="margin-bottom: 1rem;">
                   <label style="font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">首选科目</label>
                   <div class="value" style="font-size: 1.2rem; color: var(--primary); font-weight: 600;">
@@ -598,7 +606,20 @@
                   提交时间: ${sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'}
                 </div>
               </div>
-              <a href="selection.html" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;">修改选科</a>
+              <a href="/selection.html?projectId=${projectId}" class="btn btn-secondary" style="width: 100%; margin-bottom: 1.5rem;">修改选科</a>
+              
+              <!-- 新高考 3+1+2 选科说明 -->
+              <div style="background: rgba(14, 165, 233, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--primary);">
+                <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 1.1rem;">📖 新高考 3+1+2 选科说明</h4>
+                <div style="color: var(--text-secondary); line-height: 1.8; font-size: 0.95rem;">
+                  <p style="margin-bottom: 0.5rem;"><strong style="color: var(--primary);">1</strong>：物理、历史（首选科目，二选一）</p>
+                  <p style="margin-bottom: 0.5rem;"><strong style="color: var(--primary);">2</strong>：化学、生物、政治、地理（再选科目，四选二）</p>
+                  <p style="margin-bottom: 1rem;"><strong style="color: var(--primary);">3</strong>：语文、数学、外语（必考科目，无需选择）</p>
+                  <div style="background: rgba(245, 158, 11, 0.1); padding: 0.75rem; border-radius: 6px; border-left: 3px solid var(--warning);">
+                    <span style="color: var(--text-primary); font-size: 0.9rem;">⚠️ 选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 右侧：组合分析指南 -->
@@ -662,7 +683,7 @@
             <div style="text-align: center; padding: 3rem;">
               <div style="font-size: 4rem; margin-bottom: 1rem;">📝</div>
               <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">您还未进行选科</p>
-              <a href="selection.html" class="btn btn-primary">开始选科</a>
+              <a href="/selection.html?projectId=${projectId}" class="btn btn-primary">开始选科</a>
             </div>
           `;
         }
