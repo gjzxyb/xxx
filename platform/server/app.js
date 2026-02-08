@@ -83,11 +83,60 @@ async function initializeDatabase() {
   }
 }
 
+// 优雅关闭处理
+let server;
+const { closeAllConnections } = require('./config/database');
+
+async function gracefulShutdown(signal) {
+  console.log(`\n收到 ${signal} 信号，正在优雅关闭...`);
+  
+  if (server) {
+    // 停止接收新的请求
+    server.close(async () => {
+      console.log('✓ HTTP 服务器已关闭');
+      
+      try {
+        // 关闭所有数据库连接（平台数据库 + 所有项目数据库）
+        await closeAllConnections();
+        
+        console.log('✓ 应用已安全退出');
+        process.exit(0);
+      } catch (err) {
+        console.error('✗ 关闭数据库连接时出错:', err);
+        process.exit(1);
+      }
+    });
+    
+    // 强制退出超时（30秒）
+    setTimeout(() => {
+      console.error('⚠️  强制退出：关闭超时');
+      process.exit(1);
+    }, 30000);
+  } else {
+    process.exit(0);
+  }
+}
+
+// 注册信号处理器
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 捕获未处理的异常
+process.on('uncaughtException', (err) => {
+  console.error('未捕获的异常:', err);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('未处理的 Promise 拒绝:', reason);
+  gracefulShutdown('unhandledRejection');
+});
+
 // 启动服务器
 async function startServer() {
   await initializeDatabase();
 
-  app.listen(PORT, () => {
+  server = app.listen(PORT, () => {
     console.log('========================================');
     console.log('  多租户分科自选 SaaS 平台');
     console.log('========================================');
@@ -95,6 +144,8 @@ async function startServer() {
     console.log(`  API地址:  http://localhost:${PORT}/api`);
     console.log('----------------------------------------');
     console.log('  默认超管: admin@platform.com / admin123');
+    console.log('========================================');
+    console.log('  提示: 按 Ctrl+C 优雅关闭服务器');
     console.log('========================================');
   });
 }

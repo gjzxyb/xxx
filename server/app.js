@@ -217,6 +217,55 @@ async function initializeData() {
   }
 }
 
+// 优雅关闭处理
+let server;
+
+async function gracefulShutdown(signal) {
+  console.log(`\n收到 ${signal} 信号，正在优雅关闭...`);
+  
+  if (server) {
+    // 停止接收新的请求
+    server.close(async () => {
+      console.log('✓ HTTP 服务器已关闭');
+      
+      try {
+        // 关闭数据库连接
+        await sequelize.close();
+        console.log('✓ 数据库连接已关闭');
+        
+        console.log('✓ 应用已安全退出');
+        process.exit(0);
+      } catch (err) {
+        console.error('✗ 关闭数据库连接时出错:', err);
+        process.exit(1);
+      }
+    });
+    
+    // 强制退出超时（30秒）
+    setTimeout(() => {
+      console.error('⚠️  强制退出：关闭超时');
+      process.exit(1);
+    }, 30000);
+  } else {
+    process.exit(0);
+  }
+}
+
+// 注册信号处理器
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 捕获未处理的异常
+process.on('uncaughtException', (err) => {
+  console.error('未捕获的异常:', err);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('未处理的 Promise 拒绝:', reason);
+  gracefulShutdown('unhandledRejection');
+});
+
 async function startServer() {
   try {
     // 同步数据库（创建缺失的表，但不删除现有数据）
@@ -229,7 +278,7 @@ async function startServer() {
     await initializeData();
 
     // 启动服务
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log('========================================');
       console.log('  学生分科自选系统 (内嵌式 SaaS)');
       console.log('========================================');
@@ -239,6 +288,8 @@ async function startServer() {
       console.log('----------------------------------------');
       console.log('  请使用您在.env中配置的管理员账号登录');
       console.log('  如未配置，请查看上方的初始化信息');
+      console.log('========================================');
+      console.log('  提示: 按 Ctrl+C 优雅关闭服务器');
       console.log('========================================');
     });
   } catch (err) {
