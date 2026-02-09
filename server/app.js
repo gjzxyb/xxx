@@ -307,6 +307,16 @@ async function startServer() {
       console.log('========================================');
       console.log('  提示: 按 Ctrl+C 优雅关闭服务器');
       console.log('========================================');
+      
+      // 启动自动备份（如果启用）
+      if (process.env.BACKUP_ENABLED === 'true') {
+        const backupManager = require('./utils/backup');
+        backupManager.startSchedule();
+        console.log('✓ 自动备份已启动');
+        console.log(`  计划: ${process.env.BACKUP_SCHEDULE || '0 3 * * *'} (每天凌晨3点)`);
+        console.log(`  保留: 最近 ${process.env.MAX_BACKUPS || 7} 个备份`);
+        console.log('========================================');
+      }
     });
   } catch (err) {
     console.error('启动失败:', err);

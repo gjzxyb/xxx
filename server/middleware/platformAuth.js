@@ -1,14 +1,20 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { PlatformUser } = require('../models');
 const tokenBlacklist = require('../lib/TokenBlacklist');
 
-// JWT_SECRET必须在环境变量中配置
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  console.error('❌ 致命错误: JWT_SECRET未配置！');
-  console.error('   请在.env文件中设置JWT_SECRET环境变量');
-  process.exit(1);
-}
+// 安全性：平台级和项目级使用不同的JWT密钥
+const PLATFORM_JWT_SECRET = process.env.PLATFORM_JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ 严重错误: 生产环境必须设置PLATFORM_JWT_SECRET环境变量！');
+    process.exit(1);
+  }
+  // 开发环境：生成临时随机密钥并警告
+  const tempSecret = crypto.randomBytes(32).toString('hex');
+  console.warn('⚠️  警告: 未设置PLATFORM_JWT_SECRET环境变量，使用临时随机密钥');
+  console.warn('⚠️  请在.env文件中设置PLATFORM_JWT_SECRET');
+  return tempSecret;
+})();
 
 /**
  * 平台用户认证中间件 - 验证JWT token
@@ -21,7 +27,7 @@ function authenticatePlatform(req, res, next) {
     return res.status(401).json({ code: 401, message: '未提供认证令牌' });
   }
 
-  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+  jwt.verify(token, PLATFORM_JWT_SECRET, async (err, decoded) => {
     if (err) {
       console.error('JWT验证失败:', err.message);
       return res.status(403).json({ code: 403, message: '令牌无效或已过期' });
@@ -75,14 +81,15 @@ function requireSuperAdmin(req, res, next) {
 
 /**
  * 生成JWT token for platform users
+ * 安全性：使用独立的平台密钥
  */
 function generatePlatformToken(userId) {
-  return jwt.sign({ userId, type: 'platform' }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId, type: 'platform' }, PLATFORM_JWT_SECRET, { expiresIn: '7d' });
 }
 
 module.exports = {
   authenticatePlatform,
   requireSuperAdmin,
   generatePlatformToken,
-  JWT_SECRET
+  PLATFORM_JWT_SECRET
 };

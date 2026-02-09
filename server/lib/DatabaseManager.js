@@ -94,6 +94,36 @@ class DatabaseManager {
   }
 
   /**
+   * 验证项目ID格式（防止路径遍历攻击）
+   * @param {string} projectId - 项目ID
+   * @throws {Error} 如果格式无效
+   */
+  validateProjectId(projectId) {
+    if (!projectId || typeof projectId !== 'string') {
+      throw new Error('Invalid project ID: must be a non-empty string');
+    }
+
+    // 必须是标准UUID v4格式
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    
+    if (!uuidRegex.test(projectId)) {
+      console.error(`🚨 安全警告: 检测到无效的项目ID格式: ${projectId}`);
+      throw new Error('Invalid project ID format: must be a valid UUID v4');
+    }
+
+    // 额外检查：不允许包含路径遍历字符
+    const dangerousChars = ['..', '/', '\\', '\0', '%00'];
+    for (const char of dangerousChars) {
+      if (projectId.includes(char)) {
+        console.error(`🚨 安全警告: 检测到路径遍历尝试: ${projectId}`);
+        throw new Error('Security violation: path traversal attempt detected');
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * 获取项目数据库连接（带缓存）
    * @param {string} projectId - 项目ID
    * @returns {Promise<Sequelize>}
@@ -262,14 +292,44 @@ class DatabaseManager {
   }
 
   /**
-   * 获取项目数据库文件路径
+   * 获取项目数据库文件路径（带完整安全验证）
+   * @param {string} projectId - 项目ID
+   * @returns {string} - 安全验证后的绝对路径
+   * @throws {Error} 如果projectId无效或检测到路径遍历攻击
+   */
+  getSecureProjectDbPath(projectId) {
+    // 1. 验证项目ID格式（UUID v4 + 路径遍历检查）
+    this.validateProjectId(projectId);
+    
+    // 2. 构建数据库路径
+    const dbPath = path.join(this.projectDbDir, `${projectId}.sqlite`);
+    
+    // 3. 规范化路径（解析 . 和 ..）
+    const normalizedPath = path.normalize(dbPath);
+    
+    // 4. 解析为绝对路径
+    const resolvedPath = path.resolve(normalizedPath);
+    
+    // 5. 验证最终路径在允许的目录内（防止遍历到父目录）
+    const allowedDir = path.resolve(this.projectDbDir);
+    if (!resolvedPath.startsWith(allowedDir)) {
+      console.error(`🚨 安全警告: 路径遍历攻击被阻止`);
+      console.error(`  请求路径: ${resolvedPath}`);
+      console.error(`  允许目录: ${allowedDir}`);
+      throw new Error('Security violation: path traversal detected');
+    }
+    
+    return resolvedPath;
+  }
+
+  /**
+   * 获取项目数据库文件路径（向后兼容，内部使用安全版本）
    * @param {string} projectId - 项目ID
    * @returns {string}
    */
   getProjectDbPath(projectId) {
-    // 清理 projectId，防止路径遍历攻击
-    const safeProjectId = projectId.replace(/[^a-zA-Z0-9-]/g, '');
-    return path.join(this.projectDbDir, `${safeProjectId}.sqlite`);
+    // 使用安全版本
+    return this.getSecureProjectDbPath(projectId);
   }
 
   /**
@@ -295,8 +355,15 @@ class DatabaseManager {
    * @returns {boolean}
    */
   projectDbExists(projectId) {
-    const dbPath = this.getProjectDbPath(projectId);
-    return fs.existsSync(dbPath);
+    try {
+      // 安全验证
+      this.validateProjectId(projectId);
+      const dbPath = this.getSecureProjectDbPath(projectId);
+      return fs.existsSync(dbPath);
+    } catch (error) {
+      console.error(`检查项目数据库失败: ${error.message}`);
+      return false;
+    }
   }
 
   /**

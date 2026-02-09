@@ -11,13 +11,14 @@ const tokenBlacklist = require('../lib/TokenBlacklist');
 const jwt = require('jsonwebtoken');
 const emailService = require('../utils/emailService');
 const verificationCodeManager = require('../lib/VerificationCodeManager');
+const { loginLimiter, registerLimiter, passwordResetLimiter } = require('../middleware/rateLimit');
 
 /**
  * 用户登录
  * POST /api/auth/login
- * 安全性：添加登录失败锁定机制
+ * 安全性：添加登录失败锁定机制 + 速率限制
  */
-router.post('/login', validateLogin, async (req, res) => {
+router.post('/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { studentId, password, projectId } = req.body;
 
@@ -94,8 +95,9 @@ router.post('/login', validateLogin, async (req, res) => {
 /**
  * 用户注册
  * POST /api/auth/register
+ * 安全性：速率限制
  */
-router.post('/register', validatePasswordMiddleware, async (req, res) => {
+router.post('/register', registerLimiter, validatePasswordMiddleware, async (req, res) => {
   try {
     // 检查注册是否开放（默认关闭）
     const { SystemConfig } = require('../models');

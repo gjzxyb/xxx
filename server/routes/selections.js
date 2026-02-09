@@ -5,6 +5,7 @@ const { success, error } = require('../utils/response');
 const { projectDb } = require('../middleware/projectDb');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validateSelectionSubmit } = require('../middleware/validation');
+const { selectionLimiter, exportLimiter } = require('../middleware/rateLimit');
 
 // 动态导入 Project 模型
 const getProject = () => {
@@ -119,8 +120,9 @@ router.get('/my', projectDb, authenticateProject, async (req, res) => {
 /**
  * 提交/更新选科
  * POST /api/selections
+ * 安全性：速率限制
  */
-router.post('/', projectDb, authenticateProject, validateSelectionSubmit, async (req, res) => {
+router.post('/', selectionLimiter, projectDb, authenticateProject, validateSelectionSubmit, async (req, res) => {
   try {
     // 检查时间
     const projectId = req.projectId;
