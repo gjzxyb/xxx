@@ -4,6 +4,61 @@ const { PlatformUser, SystemConfig } = require('../models');
 const { generatePlatformToken } = require('../middleware/platformAuth');
 const { validatePasswordMiddleware, getPasswordPolicy } = require('../middleware/passwordPolicy');
 const loginAttemptTracker = require('../lib/LoginAttemptTracker');
+
+// 临时调试路由 - 登录锁定管理（仅开发环境）
+if (process.env.NODE_ENV !== 'production') {
+  // 查看当前锁定状态
+  router.get('/debug/lock-status', (req, res) => {
+    const locks = [];
+    const now = Date.now();
+    
+    for (const [identifier, record] of loginAttemptTracker.attempts.entries()) {
+      const isLocked = record.lockedUntil && now < record.lockedUntil;
+      locks.push({
+        identifier,
+        attempts: record.attempts,
+        locked: isLocked,
+        lockedUntil: record.lockedUntil ? new Date(record.lockedUntil).toLocaleString() : null,
+        remainingTime: record.lockedUntil ? Math.ceil((record.lockedUntil - now) / 1000) : 0
+      });
+    }
+    
+    res.json({ 
+      code: 200, 
+      totalRecords: loginAttemptTracker.attempts.size,
+      locks: locks
+    });
+  });
+  
+  // 清除所有锁定
+  router.post('/debug/clear-locks', (req, res) => {
+    const sizeBefore = loginAttemptTracker.attempts.size;
+    loginAttemptTracker.attempts.clear();
+    res.json({ 
+      code: 200, 
+      message: `已清除 ${sizeBefore} 条锁定记录`,
+      cleared: sizeBefore
+    });
+  });
+  
+  // 解锁特定账户
+  router.post('/debug/unlock-account', (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ code: 400, message: '请提供邮箱地址' });
+    }
+    
+    const identifier = `platform:${email}`;
+    const existed = loginAttemptTracker.attempts.has(identifier);
+    loginAttemptTracker.attempts.delete(identifier);
+    
+    res.json({ 
+      code: 200, 
+      message: existed ? `已解锁账户: ${email}` : `账户未被锁定: ${email}`,
+      unlocked: existed
+    });
+  });
+}
 const tokenBlacklist = require('../lib/TokenBlacklist');
 const jwt = require('jsonwebtoken');
 
@@ -113,15 +168,21 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ code: 400, message: '邮箱和密码不能为空' });
     }
 
-    // 安全性：检查账号是否被锁定
+    // 安全性：检查账号是否被锁定（开发环境可选）
     const lockIdentifier = `platform:${email}`;
-    const locked = loginAttemptTracker.isLocked(lockIdentifier);
-    if (locked) {
-      return res.status(423).json({
-        code: 423,
-        message: locked.message,
-        lockedUntil: locked.lockedUntil
-      });
+    
+    // 开发环境：跳过锁定检查（方便调试）
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔓 开发环境：跳过登录锁定检查 (${email})`);
+    } else {
+      const locked = await loginAttemptTracker.isLocked(lockIdentifier);
+      if (locked) {
+        return res.status(423).json({
+          code: 423,
+          message: locked.message,
+          lockedUntil: locked.lockedUntil
+        });
+      }
     }
 
     // 查找用户

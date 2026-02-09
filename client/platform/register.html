@@ -411,6 +411,7 @@
     </div>
   </div>
 
+  <script src="/js/csrf.js"></script>
   <script src="/js/passwordStrength.js"></script>
   <script>
     let captchaEnabled = false;
@@ -503,9 +504,13 @@
       }
 
       try {
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/platform/auth/register', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
           body: JSON.stringify(body)
         });
 

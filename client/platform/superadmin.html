@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>超级管理员 - 分科自选 SaaS 平台</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/csrf.js"></script>
   <script src="/js/safeDOM.js"></script>
   <script src="/js/passwordStrength.js"></script>
   <style>
@@ -588,37 +589,41 @@
       e.preventDefault();
 
       const defaultMaxProjects = document.getElementById('defaultMaxProjects').value;
-      const allowedEmailDomains = document.getElementById('allowedEmailDomains').value;
+      const allowedDomainsValue = document.getElementById('allowedEmailDomains').value;
 
       try {
-        await Promise.all([
-          fetch('/api/platform/superadmin/config', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({
-              key: 'default_max_projects',
+        // 发送单个请求，包含所有配置项（正确的格式）
+        const response = await fetch('/api/platform/superadmin/config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            'default_max_projects': {
               value: defaultMaxProjects,
               description: '新用户默认项目数量限制'
-            })
-          }),
-          fetch('/api/platform/superadmin/config', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({
-              key: 'allowed_email_domains',
-              value: allowedEmailDomains,
+            'allowed_email_domains': {
+              value: allowedDomainsValue,
               description: '允许注册的邮箱域名'
-            })
+            }
           })
-        ]);
+        });
 
-        showToast('配置保存成功', 'success');
+        const result = await response.json();
+        
+        if (result.code === 200) {
+          showToast('配置保存成功', 'success');
+          // 更新全局的域名列表变量
+          allowedEmailDomains = allowedDomainsValue ? 
+            allowedDomainsValue.split(',').map(d => d.trim()).filter(d => d) : [];
+          // 重新加载配置以确保显示最新值
+          setTimeout(() => loadConfig(), 300);
+        } else {
+          showToast(result.message || '保存失败', 'error');
+          console.error('配置保存失败:', result);
+        }
       } catch (error) {
         console.error('保存配置失败:', error);
         showToast('保存失败，请稍后重试', 'error');

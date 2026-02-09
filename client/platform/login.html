@@ -367,6 +367,18 @@
     let countdown = 0;
     let countdownTimer = null;
 
+    // 获取 CSRF Token
+    function getCsrfToken() {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'CSRF-TOKEN') {
+          return value;
+        }
+      }
+      return null;
+    }
+
     // 登录方式切换
     tabPassword.addEventListener('click', () => {
       tabPassword.classList.add('active');
@@ -398,9 +410,13 @@
       const password = document.getElementById('password').value;
 
       try {
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/platform/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
           body: JSON.stringify({ email, password })
         });
 
@@ -444,9 +460,13 @@
         sendCodeBtn.disabled = true;
         sendCodeBtn.textContent = '发送中...';
 
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/platform/auth/send-verification-code', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
           body: JSON.stringify({ email })
         });
 
@@ -510,9 +530,13 @@
         submitBtn.disabled = true;
         submitBtn.textContent = '登录中...';
 
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/platform/auth/login-with-code', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
           body: JSON.stringify({ email, code })
         });
 

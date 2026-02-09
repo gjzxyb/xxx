@@ -148,6 +148,18 @@
     let countdown = 0;
     let countdownTimer = null;
 
+    // 获取 CSRF Token
+    function getCsrfToken() {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'CSRF-TOKEN') {
+          return value;
+        }
+      }
+      return null;
+    }
+
     // 初始化密码强度指示器
     let registerPasswordStrength = null;
     // 在 DOM 加载完成后初始化
@@ -220,9 +232,13 @@
         sendCodeBtn.disabled = true;
         sendCodeBtn.textContent = '发送中...';
 
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/auth/send-verification-code', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
           body: JSON.stringify({ email, projectId })
         });
 
@@ -288,9 +304,13 @@
         submitBtn.disabled = true;
         submitBtn.textContent = '登录中...';
 
+        const csrfToken = getCsrfToken();
         const response = await fetch('/api/auth/login-with-code', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+          },
           body: JSON.stringify({ email, code, projectId })
         });
 

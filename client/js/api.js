@@ -43,6 +43,18 @@ function isAdmin() {
   return user && user.role === 'admin';
 }
 
+// 获取 CSRF Token
+function getCsrfToken() {
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'CSRF-TOKEN') {
+      return value;
+    }
+  }
+  return null;
+}
+
 // 通用请求方法
 async function request(url, options = {}) {
   const token = getToken();
@@ -54,6 +66,15 @@ async function request(url, options = {}) {
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // 为 POST、PUT、DELETE 请求自动添加 CSRF token
+  const method = options.method || 'GET';
+  if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
   }
 
   // 自动从 URL 获取 projectId 并添加到请求中
