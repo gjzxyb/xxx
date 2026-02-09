@@ -29,9 +29,10 @@ router.post('/login', validateLogin, async (req, res) => {
       return error(res, '缺少项目信息', 400);
     }
 
-    // 安全性：检查账号是否被锁定
-    const lockIdentifier = `${projectId}:${studentId}`;
-    const locked = loginAttemptTracker.isLocked(lockIdentifier);
+    // 安全性：检查IP是否被锁定（允许同一IP登录多个用户）
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+    const lockIdentifier = `${projectId}:${clientIp}`;
+    const locked = await loginAttemptTracker.isLocked(lockIdentifier);
     if (locked) {
       return res.status(423).json({
         code: 423,
@@ -53,7 +54,7 @@ router.post('/login', validateLogin, async (req, res) => {
     const user = await User.findOne({ where: { studentId } });
     if (!user) {
       // 安全性：记录失败尝试
-      const result = loginAttemptTracker.recordFailure(lockIdentifier);
+      const result = await loginAttemptTracker.recordFailure(lockIdentifier);
       return res.status(result.locked ? 423 : 401).json({
         code: result.locked ? 423 : 401,
         message: result.message,
@@ -65,7 +66,7 @@ router.post('/login', validateLogin, async (req, res) => {
     const isValid = await user.validatePassword(password);
     if (!isValid) {
       // 安全性：记录失败尝试
-      const result = loginAttemptTracker.recordFailure(lockIdentifier);
+      const result = await loginAttemptTracker.recordFailure(lockIdentifier);
       return res.status(result.locked ? 423 : 401).json({
         code: result.locked ? 423 : 401,
         message: result.message,
@@ -75,7 +76,7 @@ router.post('/login', validateLogin, async (req, res) => {
     }
 
     // 安全性：登录成功，清除失败记录
-    loginAttemptTracker.recordSuccess(lockIdentifier);
+    await loginAttemptTracker.recordSuccess(lockIdentifier);
 
     // 生成 token，包含 projectId
     const token = generateToken({ ...user.toJSON(), projectId });

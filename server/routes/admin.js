@@ -364,11 +364,11 @@ router.post('/students/:id/reset-password', authenticateProject, requireProjectA
       password: newPassword
     });
 
-    // 安全修复：不返回明文密码，而是通过其他安全渠道通知
-    // 建议：通过邮件/短信发送或要求管理员当面告知
+    // 返回新密码供管理员告知学生
     success(res, { 
-      studentId: student.studentId
-    }, '密码已重置成功，请通过安全渠道告知学生新密码');
+      studentId: student.studentId,
+      newPassword: newPassword
+    }, '密码已重置成功');
   } catch (err) {
     console.error('重置密码失败:', err);
     error(res, '重置失败', 500);
