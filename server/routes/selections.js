@@ -393,39 +393,61 @@ router.get('/export', projectDb, authenticateProject, requireProjectAdmin, async
 /**
  * 选科统计（管理员）
  * GET /api/selections/stats
+ * 优化：使用聚合查询替代 N+1 查询，显著提升性能
  */
 router.get('/stats', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
     const { User, Subject, Selection } = req.projectModels;
+    const { Op } = require('sequelize');
 
-    const subjects = await Subject.findAll();
-    const stats = [];
+    // 并行查询：科目列表、学生总数、已选科数
+    const [subjects, totalStudents, submittedCount] = await Promise.all([
+      Subject.findAll(),
+      User.count({ where: { role: 'student' } }),
+      Selection.count({
+        where: { status: { [Op.in]: ['submitted', 'confirmed'] } }
+      })
+    ]);
 
-    for (const subject of subjects) {
-      const count = await Selection.count({
-        where: {
-          status: { [require('sequelize').Op.in]: ['submitted', 'confirmed'] },
-          [require('sequelize').Op.or]: [
-            { physicsOrHistory: subject.id },
-            { electiveOne: subject.id },
-            { electiveTwo: subject.id }
-          ]
-        }
-      });
+    // 一次性查询所有科目的选科数量（优化N+1问题）
+    const subjectStats = await Selection.findAll({
+      where: { status: { [Op.in]: ['submitted', 'confirmed'] } },
+      attributes: [
+        'physicsOrHistory',
+        'electiveOne',
+        'electiveTwo'
+      ],
+      raw: true
+    });
 
-      stats.push({
+    // 在内存中统计每个科目的选择次数
+    const subjectCountMap = {};
+    subjectStats.forEach(selection => {
+      // 统计 physicsOrHistory
+      if (selection.physicsOrHistory) {
+        subjectCountMap[selection.physicsOrHistory] = (subjectCountMap[selection.physicsOrHistory] || 0) + 1;
+      }
+      // 统计 electiveOne
+      if (selection.electiveOne) {
+        subjectCountMap[selection.electiveOne] = (subjectCountMap[selection.electiveOne] || 0) + 1;
+      }
+      // 统计 electiveTwo
+      if (selection.electiveTwo) {
+        subjectCountMap[selection.electiveTwo] = (subjectCountMap[selection.electiveTwo] || 0) + 1;
+      }
+    });
+
+    // 构建响应数据
+    const stats = subjects.map(subject => {
+      const count = subjectCountMap[subject.id] || 0;
+      return {
         id: subject.id,
         name: subject.name,
         category: subject.category,
         maxCapacity: subject.maxCapacity,
         currentCount: count,
         remaining: subject.maxCapacity > 0 ? subject.maxCapacity - count : '不限'
-      });
-    }
-
-    const totalStudents = await User.count({ where: { role: 'student' } });
-    const submittedCount = await Selection.count({
-      where: { status: { [require('sequelize').Op.in]: ['submitted', 'confirmed'] } }
+      };
     });
 
     success(res, {

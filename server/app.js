@@ -13,6 +13,37 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const fs = require('fs');
+const rfs = require('rotating-file-stream');
+
+// #11: 日志轮转配置
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// 访问日志轮转流
+const accessLogStream = rfs.createStream('access.log', {
+  interval: '1d',    // 每天轮转
+  path: logsDir,
+  maxFiles: 30,      // 保留30天
+  compress: 'gzip'   // 旧日志压缩
+});
+
+// 错误日志轮转流
+const errorLogStream = rfs.createStream('error.log', {
+  interval: '1d',
+  path: logsDir,
+  maxFiles: 30,
+  compress: 'gzip'
+});
+
+// 重定向 console.error 到文件（同时保留控制台输出）
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  errorLogStream.write(`[${new Date().toISOString()}] ${msg}\n`);
+  originalConsoleError.apply(console, args);
+};
 
 // 导入模型和路由
 const { sequelize, User, Subject, SystemConfig, PlatformUser, Project } = require('./models');
@@ -34,6 +65,24 @@ const { csrfMiddleware, csrfVerify } = require('./middleware/csrf');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// #9: 关键配置检查 - 使用默认值时发出警告
+if (process.env.NODE_ENV === 'production') {
+  const criticalChecks = [
+    { key: 'JWT_SECRET', desc: 'JWT签名密钥' },
+    { key: 'ALLOWED_ORIGINS', desc: 'CORS允许来源' },
+  ];
+  criticalChecks.forEach(({ key, desc }) => {
+    if (!process.env[key]) {
+      console.error(`❌ 严重: 生产环境未设置 ${key} (${desc})`);
+    }
+  });
+} else {
+  // 开发环境也提示关键配置
+  if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  提示: 未设置 JWT_SECRET，使用临时密钥（重启后 token 失效）');
+  }
+}
+
 // 确保数据目录存在
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
@@ -44,17 +93,35 @@ if (!fs.existsSync(dataDir)) {
 // 安全中间件配置
 // ============================================
 
+// HTTP 访问日志（写入轮转文件）
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    accessLogStream.write(
+      `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms\n`
+    );
+  });
+  next();
+});
+
 // Helmet - 设置安全HTTP响应头
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  // #10: 启用 Strict-Transport-Security
+  hsts: process.env.NODE_ENV === 'production' ? {
+    maxAge: 31536000, // 1年
+    includeSubDomains: true,
+    preload: true
+  } : false
 }));
 
 // CORS配置 - 限制允许的来源，避免跨站攻击
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : (process.env.NODE_ENV === 'production' 
+  : (process.env.NODE_ENV === 'production'
       ? [] // 生产环境必须明确指定
       : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000']); // 开发环境默认本地
 
@@ -67,7 +134,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // 允许无origin的请求（如移动应用、Postman等）
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       callback(null, true);
     } else {
@@ -91,6 +158,29 @@ app.use(cookieParser());
 
 app.use(express.json({ limit: '10mb' })); // 限制请求体大小
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// #5: JSON 深度限制，防止对象原型污染攻击
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    const depth = getObjectDepth(req.body);
+    if (depth > 10) {
+      return res.status(400).json({ code: 400, message: '请求体嵌套层级过深' });
+    }
+  }
+  next();
+});
+
+function getObjectDepth(obj, current = 0) {
+  if (current > 10) return current;
+  if (typeof obj !== 'object' || obj === null) return current;
+  let maxDepth = current;
+  for (const val of Object.values(obj)) {
+    if (typeof val === 'object' && val !== null) {
+      maxDepth = Math.max(maxDepth, getObjectDepth(val, current + 1));
+    }
+  }
+  return maxDepth;
+}
 
 // ============================================
 // CSRF 保护
@@ -160,7 +250,7 @@ async function initializeData() {
   // 初始化邮件服务
   const emailService = require('./utils/emailService');
   await emailService.initialize();
-  
+
   // 注意：项目管理员不再自动创建
   // 必须通过 SaaS 平台在"安全设置"中为每个项目单独配置管理员凭据
   // 这样可以确保每个项目有独立的管理员账号和密码
@@ -173,7 +263,7 @@ async function initializeData() {
 
   if (superAdminCount === 0) {
     const crypto = require('crypto');
-    
+
     // 从环境变量获取管理员配置，如果没有则生成随机密码
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@platform.com';
     const adminPassword = process.env.ADMIN_PASSWORD || (() => {
@@ -190,7 +280,7 @@ async function initializeData() {
       isSuperAdmin: true,
       maxProjects: 999
     });
-    
+
     console.log('✓ 默认超级管理员已创建');
     console.log('  邮箱:', adminEmail);
     console.log('  密码:', adminPassword);
@@ -238,17 +328,17 @@ let server;
 
 async function gracefulShutdown(signal) {
   console.log(`\n收到 ${signal} 信号，正在优雅关闭...`);
-  
+
   if (server) {
     // 停止接收新的请求
     server.close(async () => {
       console.log('✓ HTTP 服务器已关闭');
-      
+
       try {
         // 关闭数据库连接
         await sequelize.close();
         console.log('✓ 数据库连接已关闭');
-        
+
         console.log('✓ 应用已安全退出');
         process.exit(0);
       } catch (err) {
@@ -256,7 +346,7 @@ async function gracefulShutdown(signal) {
         process.exit(1);
       }
     });
-    
+
     // 强制退出超时（30秒）
     setTimeout(() => {
       console.error('⚠️  强制退出：关闭超时');
@@ -307,7 +397,7 @@ async function startServer() {
       console.log('========================================');
       console.log('  提示: 按 Ctrl+C 优雅关闭服务器');
       console.log('========================================');
-      
+
       // 启动自动备份（如果启用）
       if (process.env.BACKUP_ENABLED === 'true') {
         const backupManager = require('./utils/backup');

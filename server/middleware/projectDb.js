@@ -23,6 +23,16 @@ async function projectDb(req, res, next) {
       });
     }
 
+    // 安全性：先验证 projectId 格式，防止无效输入
+    try {
+      dbManager.validateProjectId(projectId);
+    } catch (validationError) {
+      return res.status(400).json({
+        code: 400,
+        message: '无效的项目ID格式'
+      });
+    }
+
     // 检查项目数据库是否存在
     if (!dbManager.projectDbExists(projectId)) {
       return res.status(404).json({

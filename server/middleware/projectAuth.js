@@ -43,7 +43,7 @@ async function authenticateProject(req, res, next) {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     } catch (err) {
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ code: 401, message: '登录已过期，请重新登录' });

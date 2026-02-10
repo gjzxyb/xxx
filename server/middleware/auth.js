@@ -45,7 +45,7 @@ const authenticate = async (req, res, next) => {
       return unauthorized(res, 'Token已失效，请重新登录');
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
 
     // 如果token中有projectId，将其附加到req（用于后续中间件）
     if (decoded.projectId) {
@@ -87,21 +87,24 @@ const requireAdmin = (req, res, next) => {
 const generateToken = (user) => {
   // 访问令牌有效期：从环境变量读取，默认2小时
   const accessTokenExpiry = process.env.JWT_ACCESS_EXPIRY || '2h';
-  
-  const payload = { 
-    userId: user.id, 
-    role: user.role 
+
+  const payload = {
+    userId: user.id,
+    role: user.role
   };
-  
+
   // 如果提供了projectId，也签入token
   if (user.projectId) {
     payload.projectId = user.projectId;
   }
-  
+
   return jwt.sign(
     payload,
     JWT_SECRET,
-    { expiresIn: accessTokenExpiry }
+    { 
+      expiresIn: accessTokenExpiry,
+      algorithm: 'HS256'  // 安全性：明确指定算法，防止算法混淆攻击
+    }
   );
 };
 
@@ -111,11 +114,14 @@ const generateToken = (user) => {
  */
 const generateRefreshToken = (user) => {
   const refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRY || '7d';
-  
+
   return jwt.sign(
     { userId: user.id, type: 'refresh' },
     JWT_SECRET,
-    { expiresIn: refreshTokenExpiry }
+    { 
+      expiresIn: refreshTokenExpiry,
+      algorithm: 'HS256'  // 安全性：明确指定算法
+    }
   );
 };
 

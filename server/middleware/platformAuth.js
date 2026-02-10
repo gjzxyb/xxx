@@ -27,7 +27,7 @@ function authenticatePlatform(req, res, next) {
     return res.status(401).json({ code: 401, message: '未提供认证令牌' });
   }
 
-  jwt.verify(token, PLATFORM_JWT_SECRET, async (err, decoded) => {
+  jwt.verify(token, PLATFORM_JWT_SECRET, { algorithms: ['HS256'] }, async (err, decoded) => {
     if (err) {
       console.error('JWT验证失败:', err.message);
       return res.status(403).json({ code: 403, message: '令牌无效或已过期' });
@@ -84,7 +84,11 @@ function requireSuperAdmin(req, res, next) {
  * 安全性：使用独立的平台密钥
  */
 function generatePlatformToken(userId) {
-  return jwt.sign({ userId, type: 'platform' }, PLATFORM_JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(
+    { userId, type: 'platform' },
+    PLATFORM_JWT_SECRET,
+    { expiresIn: '7d', algorithm: 'HS256' }  // 安全性：明确指定算法
+  );
 }
 
 module.exports = {

@@ -15,7 +15,7 @@ class CSRFProtection {
     this.tokenExpirySeconds = 60 * 60;
     // Redis 键前缀
     this.redisPrefix = 'csrf_token:';
-    
+
     // 定期清理过期 token（仅内存模式需要）
     setInterval(() => this.cleanup(), 10 * 60 * 1000);
   }
@@ -46,7 +46,7 @@ class CSRFProtection {
    */
   async createToken(sessionId) {
     const token = this.generateToken();
-    
+
     if (this._useRedis()) {
       return await this._createTokenRedis(sessionId, token);
     }
@@ -69,7 +69,7 @@ class CSRFProtection {
         token,
         createdAt: Date.now()
       });
-      
+
       // 设置数据并自动过期
       await redis.setEx(key, this.tokenExpirySeconds, data);
       return token;
@@ -92,7 +92,7 @@ class CSRFProtection {
 
   _verifyTokenMemory(sessionId, token) {
     const record = this.tokens.get(sessionId);
-    
+
     if (!record) {
       return false;
     }
@@ -112,13 +112,13 @@ class CSRFProtection {
       const redis = redisConfig.getRedisClient();
       const key = this._getRedisKey(sessionId);
       const data = await redis.get(key);
-      
+
       if (!data) {
         return false;
       }
 
       const record = JSON.parse(data);
-      
+
       // 检查是否过期
       if (Date.now() - record.createdAt > this.tokenExpiry) {
         await redis.del(key);
@@ -180,7 +180,7 @@ const csrfProtection = new CSRFProtection();
 function getOrCreateSessionId(req, res) {
   const cookieName = 'SESSION-ID';
   let sessionId = req.cookies?.[cookieName];
-  
+
   if (!sessionId) {
     // 生成新的会话ID
     sessionId = 'anon_' + crypto.randomBytes(16).toString('hex');
@@ -192,7 +192,7 @@ function getOrCreateSessionId(req, res) {
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30天
     });
   }
-  
+
   return sessionId;
 }
 
@@ -203,10 +203,10 @@ async function csrfMiddleware(req, res, next) {
   try {
     // 使用基于 cookie 的 session ID（更加稳定）
     const sessionId = req.user?.id || getOrCreateSessionId(req, res);
-    
+
     // 如果没有 token，创建一个
     let token = req.cookies?.['CSRF-TOKEN'];
-    
+
     // 验证现有 token（如果存在）
     let isValid = false;
     if (token) {
@@ -217,7 +217,7 @@ async function csrfMiddleware(req, res, next) {
         isValid = false;
       }
     }
-    
+
     // 如果 token 不存在或无效，创建新的
     if (!token || !isValid) {
       try {
@@ -260,18 +260,19 @@ async function csrfVerify(req, res, next) {
 
     // 使用相同的 session ID 获取逻辑
     const sessionId = req.user?.id || req.cookies?.['SESSION-ID'] || req.ip;
-    
+
     // 从请求头或请求体获取 token
-    const token = req.headers['x-csrf-token'] || 
-                  req.body?._csrf || 
+    const token = req.headers['x-csrf-token'] ||
+                  req.body?._csrf ||
                   req.query?._csrf;
 
     if (!token) {
-      console.warn('CSRF 验证: token 缺失', { 
-        method: req.method, 
-        path: req.path,
-        sessionId 
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('CSRF 验证: token 缺失', {
+          method: req.method,
+          path: req.path
+        });
+      }
       return res.status(403).json({
         code: 403,
         message: 'CSRF token 缺失'
@@ -288,13 +289,14 @@ async function csrfVerify(req, res, next) {
         message: '服务器错误'
       });
     }
-    
+
     if (!isValid) {
-      console.warn('CSRF 验证: token 无效', { 
-        method: req.method, 
-        path: req.path,
-        sessionId 
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('CSRF 验证: token 无效', {
+          method: req.method,
+          path: req.path
+        });
+      }
       return res.status(403).json({
         code: 403,
         message: 'CSRF token 无效或已过期'

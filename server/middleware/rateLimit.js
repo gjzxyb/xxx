@@ -5,6 +5,12 @@
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 
+// 安全性：生产环境警告 - 内存存储无法在多实例部署中共享状态
+if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
+  console.warn('⚠️  警告: 生产环境使用内存存储速率限制，多实例部署时攻击者可通过切换实例绕过限制');
+  console.warn('⚠️  建议: 配置 REDIS_URL 环境变量以启用 Redis 存储');
+}
+
 /**
  * 登录速率限制
  * 每15分钟最多10次登录尝试，基于学号/邮箱而非IP

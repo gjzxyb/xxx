@@ -11,7 +11,7 @@ class TokenBlacklist {
     this.blacklist = new Map();
     // Redis 键前缀
     this.redisPrefix = 'token_blacklist:';
-    
+
     // 定期清理过期token（仅内存模式需要）
     setInterval(() => this.cleanup(), 60 * 60 * 1000);
   }
@@ -44,7 +44,7 @@ class TokenBlacklist {
 
   _addMemory(token, expiresAt) {
     this.blacklist.set(token, expiresAt);
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log(`Token已加入黑名单，当前黑名单大小: ${this.blacklist.size}`);
     }
@@ -55,11 +55,11 @@ class TokenBlacklist {
       const redis = redisConfig.getRedisClient();
       const key = this._getRedisKey(token);
       const ttl = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
-      
+
       if (ttl > 0) {
         // 存储过期时间戳，设置自动过期
         await redis.setEx(key, ttl, expiresAt.toString());
-        
+
         if (process.env.NODE_ENV === 'development') {
           console.log(`Token已加入Redis黑名单，TTL: ${ttl}秒`);
         }
@@ -105,7 +105,7 @@ class TokenBlacklist {
       const redis = redisConfig.getRedisClient();
       const key = this._getRedisKey(token);
       const exists = await redis.exists(key);
-      
+
       return exists === 1;
     } catch (error) {
       console.error('Redis isBlacklisted 错误:', error);
@@ -128,6 +128,7 @@ class TokenBlacklist {
       }
     }
 
+    // 安全性：仅在开发环境记录日志，避免生产环境泄露敏感信息
     if (cleaned > 0 && process.env.NODE_ENV === 'development') {
       console.log(`清理了 ${cleaned} 个过期token，当前黑名单大小: ${this.blacklist.size}`);
     }
@@ -141,7 +142,7 @@ class TokenBlacklist {
       try {
         const redis = redisConfig.getRedisClient();
         const keys = await redis.keys(`${this.redisPrefix}*`);
-        
+
         return {
           size: keys.length,
           storage: 'redis',
