@@ -104,7 +104,41 @@ async function request(url, options = {}) {
       headers
     });
 
-    const data = await response.json();
+    let data;
+    const contentType = response.headers.get('content-type');
+    
+    // 安全地解析响应
+    try {
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        data = { code: response.status, message: text || '请求失败', data: null };
+      }
+    } catch (parseErr) {
+      console.error('解析响应失败:', parseErr);
+      data = { code: response.status, message: '解析响应失败', data: null };
+    }
+
+    // 确保 data 是对象
+    if (!data || typeof data !== 'object') {
+      data = { code: response.status, message: '无效的响应格式', data: null };
+    }
+
+    // 如果 CSRF token 过期/无效，尝试刷新 token 后重试一次
+    if (data.code === 403 && data.message && data.message.includes('CSRF')) {
+      console.warn('CSRF token 无效，尝试刷新...');
+      // 等待一小段时间让服务器设置新的 cookie
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 重新获取 CSRF token
+      const newCsrfToken = getCsrfToken();
+      if (newCsrfToken && newCsrfToken !== headers['X-CSRF-Token']) {
+        headers['X-CSRF-Token'] = newCsrfToken;
+        // 重试请求
+        return request(url, options);
+      }
+    }
 
     // 只有在非登录接口且返回401时才自动跳转
     if (data.code === 401 && !url.includes('/auth/login')) {

@@ -37,7 +37,7 @@ async function authenticateProject(req, res, next) {
     }
 
     // 安全性：检查token是否在黑名单中
-    if (tokenBlacklist.isBlacklisted(token)) {
+    if (await tokenBlacklist.isBlacklisted(token)) {
       return res.status(401).json({ code: 401, message: 'Token已失效，请重新登录' });
     }
 
@@ -49,6 +49,11 @@ async function authenticateProject(req, res, next) {
         return res.status(401).json({ code: 401, message: '登录已过期，请重新登录' });
       }
       return res.status(401).json({ code: 401, message: '无效的认证信息' });
+    }
+
+    // 如果token中包含projectId，设置到req
+    if (decoded.projectId && !req.projectId) {
+      req.projectId = decoded.projectId;
     }
 
     // 验证项目数据库是否已初始化

@@ -479,8 +479,9 @@
     const user = getCurrentUser();
     if (!user || user.role !== 'admin') {
       window.location.href = `/dashboard.html?projectId=${projectId}`;
+    } else {
+      document.getElementById('adminName').textContent = user?.name || '管理员';
     }
-    document.getElementById('adminName').textContent = user.name;
 
     // 退出登录
     document.getElementById('logoutBtn').addEventListener('click', (e) => {

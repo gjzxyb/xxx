@@ -410,7 +410,7 @@
 
       const result = await api.auth.login(studentId, password, projectId);
 
-      if (result.code === 200) {
+      if (result && result.code === 200) {
         setToken(result.data.token);
         setCurrentUser(result.data.user);
 
@@ -421,7 +421,7 @@
           window.location.href = `/dashboard.html?projectId=${projectId}`;
         }
       } else {
-        showAlert(result.message);
+        showAlert(result?.message || '登录失败，请稍后重试');
         btn.disabled = false;
         btn.textContent = '登 录';
       }

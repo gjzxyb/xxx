@@ -5,6 +5,7 @@ const { success, error } = require('../utils/response');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validatePasswordMiddleware } = require('../middleware/passwordPolicy');
 const { validateTimeSettings, validateUserCreate, validateStudentsImport } = require('../middleware/validation');
+const { exportLimiter, importLimiter, adminCreateLimiter } = require('../middleware/rateLimit');
 
 /**
  * 获取概览统计数据
@@ -110,7 +111,7 @@ router.get('/students', authenticateProject, requireProjectAdmin, async (req, re
  * 创建学生
  * POST /api/admin/students
  */
-router.post('/students', authenticateProject, requireProjectAdmin, validateUserCreate, async (req, res) => {
+router.post('/students', authenticateProject, requireProjectAdmin, adminCreateLimiter, validateUserCreate, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const { studentId, name, className, password } = req.body;
@@ -153,7 +154,7 @@ router.post('/students', authenticateProject, requireProjectAdmin, validateUserC
  * 批量导入学生
  * POST /api/admin/import-students
  */
-router.post('/import-students', authenticateProject, requireProjectAdmin, validateStudentsImport, async (req, res) => {
+router.post('/import-students', authenticateProject, requireProjectAdmin, importLimiter, validateStudentsImport, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const { students } = req.body;

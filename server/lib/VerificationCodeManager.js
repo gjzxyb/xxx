@@ -14,8 +14,8 @@ class VerificationCodeManager {
     // 最大尝试次数
     this.maxAttempts = 5;
     // 同一邮箱发送间隔（秒）
-    // 开发环境：10秒；生产环境建议60秒
-    this.sendInterval = process.env.NODE_ENV === 'production' ? 60 : 10;
+    // 开发环境：10秒；生产环境30秒（避免过于严格）
+    this.sendInterval = process.env.NODE_ENV === 'production' ? 30 : 10;
     
     // Redis 键前缀
     this.redisPrefix = 'verification_code:';

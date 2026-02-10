@@ -11,7 +11,7 @@ const tokenBlacklist = require('../lib/TokenBlacklist');
 const jwt = require('jsonwebtoken');
 const emailService = require('../utils/emailService');
 const verificationCodeManager = require('../lib/VerificationCodeManager');
-const { loginLimiter, registerLimiter, passwordResetLimiter } = require('../middleware/rateLimit');
+const { loginLimiter, registerLimiter, passwordResetLimiter, verificationCodeLimiter, codeLoginLimiter } = require('../middleware/rateLimit');
 
 /**
  * 用户登录
@@ -175,7 +175,7 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
   try {
     // 安全日志：记录操作但不记录敏感信息
     console.log('修改密码请求开始 - 用户ID:', req.user?.id);
-    
+
     const { oldPassword, newPassword } = req.body;
 
     // 基本验证
@@ -295,7 +295,7 @@ router.get('/password-policy', async (req, res) => {
  * 发送邮箱验证码
  * POST /api/auth/send-verification-code
  */
-router.post('/send-verification-code', async (req, res) => {
+router.post('/send-verification-code', verificationCodeLimiter, async (req, res) => {
   try {
     const { email, projectId } = req.body;
 
@@ -318,7 +318,7 @@ router.post('/send-verification-code', async (req, res) => {
     }
 
     // 检查是否可以发送（防止频繁发送）
-    const canSendResult = verificationCodeManager.canSend(email);
+    const canSendResult = await verificationCodeManager.canSend(email);
     if (!canSendResult.allowed) {
       return res.status(429).json({
         code: 429,
@@ -343,10 +343,10 @@ router.post('/send-verification-code', async (req, res) => {
 
     // 生成验证码
     const code = verificationCodeManager.generateCode();
-    
+
     // 发送邮件
     await emailService.sendVerificationCode(email, code);
-    
+
     // 存储验证码
     verificationCodeManager.store(email, code);
 
@@ -364,7 +364,7 @@ router.post('/send-verification-code', async (req, res) => {
  * 邮箱验证码登录
  * POST /api/auth/login-with-code
  */
-router.post('/login-with-code', async (req, res) => {
+router.post('/login-with-code', codeLoginLimiter, async (req, res) => {
   try {
     const { email, code, projectId } = req.body;
 

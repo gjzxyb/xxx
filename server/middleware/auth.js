@@ -20,6 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 /**
  * JWT认证中间件
  * 安全性：检查token黑名单
+ * 注意：此中间件用于平台级认证，项目级认证请使用 projectAuth.js
  */
 const authenticate = async (req, res, next) => {
   try {
@@ -40,12 +41,19 @@ const authenticate = async (req, res, next) => {
     }
 
     // 安全性：检查token是否在黑名单中
-    if (tokenBlacklist.isBlacklisted(token)) {
+    if (await tokenBlacklist.isBlacklisted(token)) {
       return unauthorized(res, 'Token已失效，请重新登录');
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
+    // 如果token中有projectId，将其附加到req（用于后续中间件）
+    if (decoded.projectId) {
+      req.projectId = decoded.projectId;
+    }
+
+    // 注意：这里查询的是平台级User表，仅用于平台管理
+    // 项目级用户认证应该使用 projectAuth.js 中的 authenticateProject
     const user = await User.findByPk(decoded.userId);
     if (!user) {
       return unauthorized(res, '用户不存在');
@@ -80,8 +88,18 @@ const generateToken = (user) => {
   // 访问令牌有效期：从环境变量读取，默认2小时
   const accessTokenExpiry = process.env.JWT_ACCESS_EXPIRY || '2h';
   
+  const payload = { 
+    userId: user.id, 
+    role: user.role 
+  };
+  
+  // 如果提供了projectId，也签入token
+  if (user.projectId) {
+    payload.projectId = user.projectId;
+  }
+  
   return jwt.sign(
-    { userId: user.id, role: user.role },
+    payload,
     JWT_SECRET,
     { expiresIn: accessTokenExpiry }
   );
