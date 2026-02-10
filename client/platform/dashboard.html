@@ -26,7 +26,7 @@
         <li class="nav-item" onclick="showCreateProjectModal()">
           <span>➕</span> 创建项目
         </li>
-        <li class="nav-item">
+        <li class="nav-item" onclick="showAccountSettingsModal()">
           <span>⚙️</span> 账号设置
         </li>
       </ul>
@@ -141,21 +141,88 @@
     </div>
   </div>
 
+  <!-- 账号设置弹窗 -->
+  <div class="modal-overlay" id="accountSettingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ 账号设置</h3>
+        <button class="modal-close" onclick="closeAccountSettingsModal()">&times;</button>
+      </div>
+
+      <!-- 账号信息展示 -->
+      <div style="margin-bottom: 2rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-sm); border-left: 3px solid var(--primary);">
+        <h4 style="margin-bottom: 1rem; color: var(--text-primary);">账号信息</h4>
+        <div style="display: grid; gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-secondary);">当前邮箱:</span>
+            <span id="currentEmail" style="font-weight: 600;">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-secondary);">套餐级别:</span>
+            <span id="currentPlan" style="font-weight: 600;">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-secondary);">项目配额:</span>
+            <span id="currentQuota" style="font-weight: 600;">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 标签页切换 -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color);">
+        <button type="button" class="account-tab active" data-tab="email" onclick="switchAccountTab('email')" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">
+          修改邮箱
+        </button>
+        <button type="button" class="account-tab" data-tab="password" onclick="switchAccountTab('password')" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">
+          修改密码
+        </button>
+      </div>
+
+      <!-- 修改邮箱表单 -->
+      <form id="changeEmailForm" style="display: block;">
+        <div class="form-group">
+          <label class="form-label">新邮箱地址</label>
+          <input type="email" id="newEmail" class="form-input" required placeholder="请输入新的邮箱地址">
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认密码</label>
+          <input type="password" id="emailConfirmPassword" class="form-input" required placeholder="请输入当前密码以确认修改">
+        </div>
+        <div class="flex justify-between" style="margin-top: 2rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeAccountSettingsModal()">取消</button>
+          <button type="submit" class="btn btn-primary">保存邮箱</button>
+        </div>
+      </form>
+
+      <!-- 修改密码表单 -->
+      <form id="changePasswordForm" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">当前密码</label>
+          <input type="password" id="oldPassword" class="form-input" required placeholder="请输入当前密码">
+        </div>
+        <div class="form-group">
+          <label class="form-label">新密码</label>
+          <input type="password" id="newPassword" class="form-input" required placeholder="8-32字符，含大小写字母和数字">
+          <!-- 密码强度指示器容器 -->
+          <div id="accountPasswordStrengthContainer"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">确认新密码</label>
+          <input type="password" id="confirmNewPassword" class="form-input" required placeholder="请再次输入新密码">
+        </div>
+        <div class="flex justify-between" style="margin-top: 2rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeAccountSettingsModal()">取消</button>
+          <button type="submit" class="btn btn-primary">保存密码</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Custom Confirm Dialog -->
   <div class="modal-overlay" id="confirmDialog">
     <div class="modal" style="max-width: 400px;">
       <div class="modal-header">
         <h3 class="modal-title">⚠️ 确认操作</h3>
-      </div>
-      <div class="modal-body">
-        <p id="confirmMessage" style="margin: 1.5rem 0; color: var(--text-primary);"></p>
-      </div>
-      <div class="flex justify-between" style="gap: 1rem;">
-        <button type="button" class="btn btn-secondary" style="flex: 1;" id="confirmCancel">取消</button>
-        <button type="button" class="btn btn-danger" style="flex: 1;" id="confirmOk">确定</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
@@ -278,7 +345,7 @@
             allProjects.forEach(p => {
               const statusClass = p.status === 'running' ? 'status-active' : 'status-inactive';
               const statusText = p.status === 'running' ? '运行中' : p.status === 'paused' ? '已暂停' : '已归档';
-              
+
               const card = safeDOM.createElement('div', {
                 className: 'project-card',
                 children: [
@@ -509,7 +576,7 @@
     // 安全设置弹窗
     let adminPasswordStrength = null;
     let allowedEmailDomains = [];
-    
+
     // 加载允许的邮箱域名配置
     async function loadEmailDomainConfig() {
       try {
@@ -530,35 +597,35 @@
         allowedEmailDomains = [];
       }
     }
-    
+
     // 验证邮箱域名
     function validateEmailDomain(email) {
       if (!email || !email.includes('@')) {
         return { valid: false, message: '请输入有效的邮箱地址' };
       }
-      
+
       // 如果没有设置域名限制，则不验证
       if (allowedEmailDomains.length === 0) {
         return { valid: true };
       }
-      
+
       const emailDomain = email.split('@')[1];
       if (!allowedEmailDomains.includes(emailDomain)) {
-        return { 
-          valid: false, 
-          message: `邮箱域名不在允许列表中。允许的域名：${allowedEmailDomains.join(', ')}` 
+        return {
+          valid: false,
+          message: `邮箱域名不在允许列表中。允许的域名：${allowedEmailDomains.join(', ')}`
         };
       }
-      
+
       return { valid: true };
     }
-    
+
     function showSecurityModal(projectId) {
       document.getElementById('securityProjectId').value = projectId;
       document.getElementById('adminUsername').value = '';
       document.getElementById('adminPassword').value = '';
       document.getElementById('securityModal').classList.add('active');
-      
+
       // 初始化密码强度指示器
       if (adminPasswordStrength) {
         adminPasswordStrength.destroy();
@@ -567,7 +634,7 @@
         passwordInput: document.getElementById('adminPassword'),
         container: document.getElementById('adminPasswordStrengthContainer')
       });
-      
+
       // 加载邮箱域名配置
       loadEmailDomainConfig();
     }
@@ -632,6 +699,150 @@
       } catch (err) {
         console.error('[Security] Error:', err);
         showToast('设置失败，请稍后重试: ' + err.message, 'error');
+      }
+    });
+
+    // 账号设置功能
+    let accountPasswordStrength = null;
+
+    function showAccountSettingsModal() {
+      // 加载当前用户信息并显示
+      document.getElementById('currentEmail').textContent = user.email || '-';
+      document.getElementById('currentPlan').textContent = user.plan || '免费版';
+      document.getElementById('currentQuota').textContent = `${user.maxProjects || 0} 个项目`;
+
+      // 重置表单
+      document.getElementById('changeEmailForm').reset();
+      document.getElementById('changePasswordForm').reset();
+
+      // 切换到邮箱标签页
+      switchAccountTab('email');
+
+      // 显示弹窗
+      document.getElementById('accountSettingsModal').classList.add('active');
+    }
+
+    function closeAccountSettingsModal() {
+      document.getElementById('accountSettingsModal').classList.remove('active');
+      if (accountPasswordStrength) {
+        accountPasswordStrength.destroy();
+        accountPasswordStrength = null;
+      }
+    }
+
+    function switchAccountTab(tab) {
+      // 切换标签页激活状态
+      document.querySelectorAll('.account-tab').forEach(t => {
+        const isActive = t.dataset.tab === tab;
+        t.classList.toggle('active', isActive);
+        t.style.borderBottom = isActive ? '2px solid var(--primary)' : '2px solid transparent';
+        t.style.color = isActive ? 'var(--primary)' : 'var(--text-secondary)';
+      });
+
+      // 切换表单显示
+      document.getElementById('changeEmailForm').style.display = tab === 'email' ? 'block' : 'none';
+      document.getElementById('changePasswordForm').style.display = tab === 'password' ? 'block' : 'none';
+
+      // 初始化或销毁密码强度指示器
+      if (tab === 'password') {
+        if (accountPasswordStrength) {
+          accountPasswordStrength.destroy();
+        }
+        accountPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('newPassword'),
+          confirmInput: document.getElementById('confirmNewPassword'),
+          container: document.getElementById('accountPasswordStrengthContainer')
+        });
+      } else {
+        if (accountPasswordStrength) {
+          accountPasswordStrength.destroy();
+          accountPasswordStrength = null;
+        }
+      }
+    }
+
+    // 修改邮箱表单提交
+    document.getElementById('changeEmailForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newEmail = document.getElementById('newEmail').value.trim();
+      const password = document.getElementById('emailConfirmPassword').value;
+
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newEmail)) {
+        showToast('请输入有效的邮箱地址', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/platform/auth/user/email', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ newEmail, password })
+        });
+
+        const result = await res.json();
+        if (result.code === 200) {
+          showToast('邮箱修改成功！请使用新邮箱登录', 'success');
+          // 更新本地用户信息
+          user.email = newEmail;
+          localStorage.setItem('platformUser', JSON.stringify(user));
+          closeAccountSettingsModal();
+        } else {
+          showToast(result.message || '修改失败', 'error');
+        }
+      } catch (err) {
+        console.error('修改邮箱失败:', err);
+        showToast('修改失败，请稍后重试', 'error');
+      }
+    });
+
+    // 修改密码表单提交
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const oldPassword = document.getElementById('oldPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmNewPassword').value;
+
+      // 验证新密码和确认密码一致
+      if (newPassword !== confirmPassword) {
+        showToast('两次输入的新密码不一致', 'error');
+        return;
+      }
+
+      // 验证密码强度
+      if (accountPasswordStrength && !accountPasswordStrength.isValid()) {
+        const errors = accountPasswordStrength.getErrors();
+        showToast('密码不符合要求：' + errors.join('、'), 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/platform/auth/user/password', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ oldPassword, newPassword })
+        });
+
+        const result = await res.json();
+        if (result.code === 200) {
+          showToast('密码修改成功！请重新登录', 'success');
+          setTimeout(() => {
+            localStorage.clear();
+            window.location.href = 'login.html';
+          }, 1500);
+        } else {
+          showToast(result.message || '修改失败', 'error');
+        }
+      } catch (err) {
+        console.error('修改密码失败:', err);
+        showToast('修改失败，请稍后重试', 'error');
       }
     });
 

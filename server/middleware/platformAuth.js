@@ -27,6 +27,12 @@ function authenticatePlatform(req, res, next) {
     return res.status(401).json({ code: 401, message: '未提供认证令牌' });
   }
 
+  // 检查token是否在黑名单中
+  if (tokenBlacklist.isBlacklisted(token)) {
+    console.error('Token已在黑名单中');
+    return res.status(401).json({ code: 401, message: '令牌已失效' });
+  }
+
   jwt.verify(token, PLATFORM_JWT_SECRET, { algorithms: ['HS256'] }, async (err, decoded) => {
     if (err) {
       console.error('JWT验证失败:', err.message);

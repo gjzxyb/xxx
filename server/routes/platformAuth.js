@@ -502,4 +502,144 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// ===========================
+// 用户账号管理 API
+// ===========================
+
+// 修改邮箱
+router.put('/user/email', require('../middleware/platformAuth').authenticatePlatform, async (req, res) => {
+  try {
+    const { newEmail, password } = req.body;
+    const userId = req.user.id;
+
+    // 验证必填字段
+    if (!newEmail || !password) {
+      return res.status(400).json({
+        code: 400,
+        message: '请提供新邮箱和当前密码'
+      });
+    }
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({
+        code: 400,
+        message: '邮箱格式不正确'
+      });
+    }
+
+    // 查找当前用户
+    const user = await PlatformUser.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        code: 404,
+        message: '用户不存在'
+      });
+    }
+
+    // 验证当前密码
+    const bcrypt = require('bcryptjs');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        code: 401,
+        message: '当前密码不正确'
+      });
+    }
+
+    // 检查新邮箱是否已被使用
+    const existingUser = await PlatformUser.findOne({ where: { email: newEmail } });
+    if (existingUser && existingUser.id !== userId) {
+      return res.status(409).json({
+        code: 409,
+        message: '该邮箱已被其他用户使用'
+      });
+    }
+
+    // 更新邮箱
+    await user.update({ email: newEmail });
+
+    res.json({
+      code: 200,
+      message: '邮箱修改成功',
+      data: { email: newEmail }
+    });
+
+  } catch (error) {
+    console.error('修改邮箱失败:', error);
+    res.status(500).json({
+      code: 500,
+      message: '修改邮箱失败，请稍后重试'
+    });
+  }
+});
+
+// 修改密码
+router.put('/user/password', require('../middleware/platformAuth').authenticatePlatform, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    // 验证必填字段
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        code: 400,
+        message: '请提供当前密码和新密码'
+      });
+    }
+
+    // 验证新密码强度
+    if (newPassword.length < 8 || newPassword.length > 32) {
+      return res.status(400).json({
+        code: 400,
+        message: '密码长度必须在8-32个字符之间'
+      });
+    }
+
+    // 查找当前用户
+    const user = await PlatformUser.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        code: 404,
+        message: '用户不存在'
+      });
+    }
+
+    // 验证当前密码
+    const bcrypt = require('bcryptjs');
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        code: 401,
+        message: '当前密码不正确'
+      });
+    }
+
+    // 检查新密码是否与旧密码相同
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        code: 400,
+        message: '新密码不能与当前密码相同'
+      });
+    }
+
+    // 更新密码（模型的 beforeUpdate hook 会自动哈希）
+    await user.update({ password: newPassword });
+
+    res.json({
+      code: 200,
+      message: '密码修改成功，请重新登录'
+    });
+
+  } catch (error) {
+    console.error('修改密码失败:', error);
+    res.status(500).json({
+      code: 500,
+      message: '修改密码失败，请稍后重试'
+    });
+  }
+});
+
 module.exports = router;
