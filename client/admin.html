@@ -1231,9 +1231,11 @@
     document.getElementById('exportSelectionsBtn').addEventListener('click', (e) => {
       e.preventDefault();
       const classFilter = document.getElementById('selectionsClassFilter').value;
+      const combinationFilter = document.getElementById('selectionsCombinationFilter').value;
       const projectId = new URLSearchParams(window.location.search).get('projectId');
       let url = '/api/selections/export?token=' + getToken() + '&projectId=' + projectId;
       if (classFilter) url += '&className=' + encodeURIComponent(classFilter);
+      if (combinationFilter) url += '&combination=' + encodeURIComponent(combinationFilter);
       window.open(url, '_blank');
     });
 

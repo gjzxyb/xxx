@@ -330,7 +330,8 @@ router.get('/', projectDb, authenticateProject, requireProjectAdmin, async (req,
  */
 router.get('/export', projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
-    const { status, className } = req.query;
+    const { User, Subject, Selection } = req.projectModels;
+    const { status, className, combination } = req.query;
     const XLSX = require('xlsx');
 
     const where = {};
@@ -351,11 +352,24 @@ router.get('/export', projectDb, authenticateProject, requireProjectAdmin, async
       include[0].where = { className };
     }
 
-    const selections = await Selection.findAll({
+    let selections = await Selection.findAll({
       where,
       include,
       order: [['submittedAt', 'DESC']]
     });
+
+    // 客户端组合筛选（如果提供了组合参数）
+    if (combination) {
+      selections = selections.filter(sel => {
+        const ph = sel.physicsHistorySubject?.name || '';
+        const electives = [
+          sel.electiveOneSubject?.name || '',
+          sel.electiveTwoSubject?.name || ''
+        ].sort();
+        const selCombination = `${ph} + ${electives.join(' + ')}`;
+        return selCombination === combination;
+      });
+    }
 
     // 准备Excel数据
     const excelData = selections.map((sel, i) => ({
