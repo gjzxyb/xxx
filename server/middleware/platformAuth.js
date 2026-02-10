@@ -19,7 +19,7 @@ const PLATFORM_JWT_SECRET = process.env.PLATFORM_JWT_SECRET || (() => {
 /**
  * 平台用户认证中间件 - 验证JWT token
  */
-function authenticatePlatform(req, res, next) {
+async function authenticatePlatform(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -28,7 +28,7 @@ function authenticatePlatform(req, res, next) {
   }
 
   // 检查token是否在黑名单中
-  if (tokenBlacklist.isBlacklisted(token)) {
+  if (await tokenBlacklist.isBlacklisted(token)) {
     console.error('Token已在黑名单中');
     return res.status(401).json({ code: 401, message: '令牌已失效' });
   }
