@@ -154,7 +154,7 @@ a:hover {
 
 .card:hover {
   border-color: rgba(14, 165, 233, 0.3);
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.2),
     0 0 20px rgba(14, 165, 233, 0.15);
   transform: translateY(-3px);
@@ -1414,4 +1414,163 @@ tr:hover td {
   color: var(--text-primary);
   border-color: var(--success);
   background: rgba(16, 185, 129, 0.1);
+}
+
+/* 针对再选科目（四选二）的特殊响应式布局优化 */
+#electivesGrid {
+  /* 默认: 2列 (2x2布局) */
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+/* 小屏幕 (< 768px): 1列 */
+@media (max-width: 768px) {
+  #electivesGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* 超大屏幕 (> 1400px): 4列 (一行显示完) */
+@media (min-width: 1400px) {
+  #electivesGrid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+/* 组合推荐网格 */
+.combination-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.combination-card {
+  background: var(--bg-secondary);
+  padding: 1.2rem;
+  border-radius: 8px;
+  border-left-width: 4px;
+  border-left-style: solid;
+  transition: transform 0.2s;
+}
+
+.combination-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   移动端响应式适配扩充
+   ============================================ */
+@media (max-width: 768px) {
+
+  /* 导航栏适配 */
+  .navbar-content {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .navbar-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    margin-top: 1rem;
+    gap: 0.5rem;
+  }
+
+  .nav-link {
+    width: 100%;
+    padding: 0.75rem;
+  }
+
+  .nav-user {
+    width: 100%;
+    margin-top: 0.5rem;
+    justify-content: flex-start;
+    padding: 0.75rem;
+  }
+
+  /* 容器适配 */
+  .container {
+    padding: 0 1rem;
+  }
+
+  .main-content {
+    padding: 1.5rem 0;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+
+  /* 标签页横向滚动适配 */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    /* iOS平滑滚动 */
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+  }
+
+  /* 表格容器适配 */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  /* 统计卡片网格适配 */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* 选科组合网格适配 */
+  .combination-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 模态框适配 */
+  .modal {
+    width: 95%;
+    padding: 1.5rem;
+    margin: 1rem;
+    max-height: 85vh;
+  }
+
+  /* 字体大小微调 */
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .navbar-brand {
+    font-size: 1.1rem;
+  }
 }

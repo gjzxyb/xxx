@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="/js/csrf.js"></script>
   <script src="js/safeDOM.js"></script>
+
 </head>
 <body>
   <div class="page-wrapper">
@@ -240,7 +241,7 @@
           safeDOM.setText(errorDiv1, '加载失败: ' + (result.message || '未知错误'));
           phGrid.innerHTML = '';
           phGrid.appendChild(errorDiv1);
-          
+
           const errorDiv2 = document.createElement('div');
           errorDiv2.style.cssText = 'padding: 2rem; text-align: center; color: var(--danger);';
           safeDOM.setText(errorDiv2, '加载失败: ' + (result.message || '未知错误'));
@@ -284,7 +285,7 @@
       phSubjects.forEach(s => {
         phGrid.appendChild(createSubjectCard(s, 'ph'));
       });
-      
+
       safeDOM.empty(elGrid);
       elSubjects.forEach(s => {
         elGrid.appendChild(createSubjectCard(s, 'el'));
@@ -311,35 +312,35 @@
       card.dataset.id = subject.id;
       card.dataset.type = type;
       card.dataset.name = subject.name;
-      
+
       // 使用安全的DOM操作防止XSS
       const nameDiv = document.createElement('div');
       nameDiv.className = 'subject-name';
       nameDiv.textContent = subject.name;
-      
+
       const descDiv = document.createElement('div');
       descDiv.className = 'subject-desc';
       descDiv.textContent = subject.description || '';
-      
+
       const metaDiv = document.createElement('div');
       metaDiv.className = 'subject-meta';
-      
+
       const capacitySpan = document.createElement('span');
       capacitySpan.className = 'subject-capacity';
       capacitySpan.textContent = `剩余名额: ${remaining}`;
       metaDiv.appendChild(capacitySpan);
-      
+
       if (isSelected) {
         const badgeSpan = document.createElement('span');
         badgeSpan.className = 'badge badge-success';
         badgeSpan.textContent = '已选';
         metaDiv.appendChild(badgeSpan);
       }
-      
+
       card.appendChild(nameDiv);
       card.appendChild(descDiv);
       card.appendChild(metaDiv);
-      
+
       return card;
     }
 
