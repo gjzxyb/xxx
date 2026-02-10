@@ -79,14 +79,14 @@
         <div class="card mt-4 animate-fadeIn" style="animation-delay: 0.4s;">
           <!-- 选科组合详细说明 -->
           <h4 style="margin-top: 2rem; margin-bottom: 1.5rem; color: var(--primary);">🎯 选科组合分析指南</h4>
-          
+
           <!-- 物理 + 化学 + X -->
           <div style="margin-bottom: 2.5rem;">
             <h5 style="color: var(--primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-light);">
               🔬 物理 + 化学 + X（纯理组合，专业覆盖率最高 ≥95%）
             </h5>
             <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-top: 1rem;">
-              
+
               <!-- 物+化+生 -->
               <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
                 <h6 style="color: #3b82f6; margin-bottom: 0.8rem; font-weight: 600;">物理 + 化学 + 生物</h6>
@@ -130,7 +130,7 @@
               ⚠️ 注意：避开化学后，部分高水平理工类院校专业（如计算机、机械）可能无法报考
             </p>
             <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-              
+
               <!-- 物+生+地 -->
               <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #8b5cf6;">
                 <h6 style="color: #8b5cf6; margin-bottom: 0.8rem; font-weight: 600;">物理 + 生物 + 地理</h6>
@@ -169,7 +169,7 @@
               📜 历史 + 化学 + X（文科偏理，竞争压力适中）
             </h5>
             <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-              
+
               <!-- 历+化+生 -->
               <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #14b8a6;">
                 <h6 style="color: #14b8a6; margin-bottom: 0.8rem; font-weight: 600;">历史 + 化学 + 生物</h6>
@@ -209,7 +209,7 @@
               📖 历史 + 非化学 + X（传统纯文方向）
             </h5>
             <div class="combination-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-              
+
               <!-- 历+生+地 -->
               <div class="combination-card" style="background: var(--bg-secondary); padding: 1.2rem; border-radius: 8px; border-left: 4px solid #84cc16;">
                 <h6 style="color: #84cc16; margin-bottom: 0.8rem; font-weight: 600;">历史 + 生物 + 地理</h6>
@@ -259,6 +259,11 @@
         <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
       </div>
       <form id="changePasswordForm">
+        <div class="form-group">
+          <label class="form-label">邮箱地址（可选）</label>
+          <input type="email" id="emailInput" class="form-input" placeholder="绑定邮箱后可使用验证码登录">
+          <small style="color: var(--text-muted); font-size: 0.85rem; display: block; margin-top: 0.25rem;">💡 绑定邮箱后可使用验证码登录功能</small>
+        </div>
         <div class="form-group">
           <label class="form-label">当前密码</label>
           <input type="password" id="currentPassword" class="form-input" required placeholder="请输入当前密码">
@@ -343,7 +348,14 @@
     function showChangePasswordModal() {
       document.getElementById('changePasswordModal').classList.add('active');
       document.getElementById('changePasswordForm').reset();
-      
+
+      // 显示当前邮箱
+      const user = getCurrentUser();
+      if (user && user.email) {
+        document.getElementById('emailInput').value = user.email;
+        document.getElementById('emailInput').placeholder = '当前邮箱: ' + user.email;
+      }
+
       // 初始化密码强度指示器
       if (newPasswordStrength) {
         newPasswordStrength.destroy();
@@ -364,15 +376,25 @@
 
     document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const currentPassword = document.getElementById('currentPassword').value;
       const newPassword = document.getElementById('newPassword').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
+      const email = document.getElementById('emailInput').value.trim();
 
       // 验证新密码和确认密码是否一致
       if (newPassword !== confirmPassword) {
         alert('两次输入的新密码不一致');
         return;
+      }
+
+      // 验证邮箱格式（如果填写了）
+      if (email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          alert('邮箱格式不正确');
+          return;
+        }
       }
 
       // 验证密码强度
@@ -383,10 +405,10 @@
       }
 
       try {
-        const result = await api.auth.changePassword(currentPassword, newPassword);
-        
+        const result = await api.auth.changePassword(currentPassword, newPassword, email || undefined);
+
         if (result.code === 200) {
-          alert('密码修改成功！请使用新密码重新登录');
+          alert(result.message || '修改成功！请使用新密码重新登录');
           closeChangePasswordModal();
           clearToken();
           window.location.href = projectId ? `/?projectId=${projectId}` : '/';
@@ -560,19 +582,19 @@
     // 加载我的选科
     async function loadMySelection() {
       const content = document.getElementById('selectionContent');
-      
+
       try {
         const result = await api.selections.getMy();
         console.log('Selection data:', result); // 调试信息
 
         if (result.code === 200 && result.data) {
           const sel = result.data;
-          
+
           // 更新统计卡片
           document.getElementById('statPhysicsHistory').textContent = sel.physicsHistorySubject?.name || '-';
-          document.getElementById('statElectives').textContent = 
+          document.getElementById('statElectives').textContent =
             `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`;
-          
+
           const statusMap = {
             'draft': '草稿',
             'submitted': '已提交',
@@ -580,36 +602,36 @@
             'cancelled': '已取消'
           };
           document.getElementById('statStatus').textContent = statusMap[sel.status] || '-';
-          
+
           // 获取组合分析
           const analysis = getCombinationAnalysis(
             sel.physicsHistorySubject?.name,
             sel.electiveOneSubject?.name,
             sel.electiveTwoSubject?.name
           );
-          
+
           console.log('Analysis data:', analysis); // 调试信息
-        
+
         // 更新选科详情 - 使用安全的DOM操作防止XSS
         safeDOM.empty(content);
-        
+
         const gridContainer = document.createElement('div');
         gridContainer.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;';
-        
+
         // 左侧：已选科目 + 选科说明
         const leftCol = document.createElement('div');
-        
+
         // 已选科目标题
         const leftTitle = document.createElement('h4');
         leftTitle.style.cssText = 'margin-bottom: 1rem; color: var(--primary);';
         leftTitle.textContent = '📝 已选科目';
         leftCol.appendChild(leftTitle);
-        
+
         // 选科详情卡片
         const selectionDisplay = document.createElement('div');
         selectionDisplay.className = 'selection-display';
         selectionDisplay.style.cssText = 'background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;';
-        
+
         // 首选科目
         const phItem = document.createElement('div');
         phItem.className = 'subject-item physics-history';
@@ -624,7 +646,7 @@
         phItem.appendChild(phLabel);
         phItem.appendChild(phValue);
         selectionDisplay.appendChild(phItem);
-        
+
         // 再选科目
         const electiveItem = document.createElement('div');
         electiveItem.className = 'subject-item electives';
@@ -639,16 +661,16 @@
         electiveItem.appendChild(electiveLabel);
         electiveItem.appendChild(electiveValue);
         selectionDisplay.appendChild(electiveItem);
-        
+
         // 提交时间
         const submitTime = document.createElement('div');
         submitTime.className = 'submit-time';
         submitTime.style.cssText = 'font-size: 0.9rem; color: var(--text-muted); padding-top: 1rem; border-top: 1px solid var(--border-color);';
         safeDOM.setText(submitTime, '提交时间: ' + (sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'));
         selectionDisplay.appendChild(submitTime);
-        
+
         leftCol.appendChild(selectionDisplay);
-        
+
         // 修改选科按钮
         const modifyBtn = document.createElement('a');
         modifyBtn.href = '/selection.html?projectId=' + encodeURIComponent(projectId);
@@ -656,7 +678,7 @@
         modifyBtn.style.cssText = 'width: 100%; margin-bottom: 1.5rem;';
         modifyBtn.textContent = '修改选科';
         leftCol.appendChild(modifyBtn);
-        
+
         // 选科说明
         const infoBox = document.createElement('div');
         infoBox.style.cssText = 'background: rgba(14, 165, 233, 0.05); padding: 1.25rem; border-radius: 8px; border-left: 3px solid var(--primary);';
@@ -672,22 +694,22 @@
           </div>
         `;
         leftCol.appendChild(infoBox);
-        
+
         gridContainer.appendChild(leftCol);
-        
+
         // 右侧：组合分析指南
         const rightCol = document.createElement('div');
         const rightTitle = document.createElement('h4');
         rightTitle.style.cssText = 'margin-bottom: 1rem; color: var(--primary);';
         rightTitle.textContent = '🎯 组合分析指南';
         rightCol.appendChild(rightTitle);
-        
+
         if (analysis) {
           const analysisBox = document.createElement('div');
           // 注意：analysis.color 需要验证是否为有效颜色值
           const safeColor = /^#[0-9A-Fa-f]{6}$/.test(analysis.color) ? analysis.color : '#0ea5e9';
           analysisBox.style.cssText = `background: linear-gradient(135deg, ${safeColor}15 0%, ${safeColor}05 100%); padding: 1.5rem; border-radius: 8px; border-left: 4px solid ${safeColor};`;
-          
+
           // 组合名称
           const comboHeader = document.createElement('div');
           comboHeader.style.cssText = 'margin-bottom: 1rem;';
@@ -700,7 +722,7 @@
           comboHeader.appendChild(categoryDiv);
           comboHeader.appendChild(comboTitle);
           analysisBox.appendChild(comboHeader);
-          
+
           // 专业覆盖率
           const coverageBox = document.createElement('div');
           coverageBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
@@ -713,7 +735,7 @@
           coverageBox.appendChild(coverageLabel);
           coverageBox.appendChild(coverageValue);
           analysisBox.appendChild(coverageBox);
-          
+
           // 优势
           if (analysis.advantages) {
             const advBox = document.createElement('div');
@@ -728,7 +750,7 @@
             advBox.appendChild(advContent);
             analysisBox.appendChild(advBox);
           }
-          
+
           // 劣势
           if (analysis.disadvantages) {
             const disBox = document.createElement('div');
@@ -743,7 +765,7 @@
             disBox.appendChild(disContent);
             analysisBox.appendChild(disBox);
           }
-          
+
           // 可选专业面
           const majorsBox = document.createElement('div');
           majorsBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; margin-bottom: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
@@ -756,7 +778,7 @@
           majorsBox.appendChild(majorsLabel);
           majorsBox.appendChild(majorsContent);
           analysisBox.appendChild(majorsBox);
-          
+
           // 就业方向
           const careersBox = document.createElement('div');
           careersBox.style.cssText = 'background: #ffffff; padding: 1rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);';
@@ -769,7 +791,7 @@
           careersBox.appendChild(careersLabel);
           careersBox.appendChild(careersContent);
           analysisBox.appendChild(careersBox);
-          
+
           rightCol.appendChild(analysisBox);
         } else {
           const emptyBox = document.createElement('div');
@@ -783,7 +805,7 @@
           emptyBox.appendChild(emptyText);
           rightCol.appendChild(emptyBox);
         }
-        
+
         gridContainer.appendChild(rightCol);
         content.appendChild(gridContainer);
         } else {
@@ -791,26 +813,26 @@
           document.getElementById('statPhysicsHistory').textContent = '未选择';
           document.getElementById('statElectives').textContent = '未选择';
           document.getElementById('statStatus').textContent = '未提交';
-          
+
           // 更新选科详情 - 使用安全的DOM操作
           safeDOM.empty(content);
-          
+
           const emptyState = document.createElement('div');
           emptyState.style.cssText = 'text-align: center; padding: 3rem;';
-          
+
           const icon = document.createElement('div');
           icon.style.cssText = 'font-size: 4rem; margin-bottom: 1rem;';
           icon.textContent = '📝';
-          
+
           const text = document.createElement('p');
           text.style.cssText = 'color: var(--text-secondary); margin-bottom: 1.5rem;';
           text.textContent = '您还未进行选科';
-          
+
           const startBtn = document.createElement('a');
           startBtn.href = '/selection.html?projectId=' + encodeURIComponent(projectId);
           startBtn.className = 'btn btn-primary';
           startBtn.textContent = '开始选科';
-          
+
           emptyState.appendChild(icon);
           emptyState.appendChild(text);
           emptyState.appendChild(startBtn);

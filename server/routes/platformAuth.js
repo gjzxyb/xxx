@@ -11,7 +11,7 @@ if (process.env.NODE_ENV !== 'production') {
   router.get('/debug/lock-status', (req, res) => {
     const locks = [];
     const now = Date.now();
-    
+
     for (const [identifier, record] of loginAttemptTracker.attempts.entries()) {
       const isLocked = record.lockedUntil && now < record.lockedUntil;
       locks.push({
@@ -22,38 +22,38 @@ if (process.env.NODE_ENV !== 'production') {
         remainingTime: record.lockedUntil ? Math.ceil((record.lockedUntil - now) / 1000) : 0
       });
     }
-    
-    res.json({ 
-      code: 200, 
+
+    res.json({
+      code: 200,
       totalRecords: loginAttemptTracker.attempts.size,
       locks: locks
     });
   });
-  
+
   // 清除所有锁定
   router.post('/debug/clear-locks', (req, res) => {
     const sizeBefore = loginAttemptTracker.attempts.size;
     loginAttemptTracker.attempts.clear();
-    res.json({ 
-      code: 200, 
+    res.json({
+      code: 200,
       message: `已清除 ${sizeBefore} 条锁定记录`,
       cleared: sizeBefore
     });
   });
-  
+
   // 解锁特定账户
   router.post('/debug/unlock-account', (req, res) => {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ code: 400, message: '请提供邮箱地址' });
     }
-    
+
     const identifier = `platform:${email}`;
     const existed = loginAttemptTracker.attempts.has(identifier);
     loginAttemptTracker.attempts.delete(identifier);
-    
-    res.json({ 
-      code: 200, 
+
+    res.json({
+      code: 200,
       message: existed ? `已解锁账户: ${email}` : `账户未被锁定: ${email}`,
       unlocked: existed
     });
@@ -170,7 +170,7 @@ router.post('/login', async (req, res) => {
 
     // 安全性：检查账号是否被锁定（开发环境可选）
     const lockIdentifier = `platform:${email}`;
-    
+
     // 开发环境：跳过锁定检查（方便调试）
     if (process.env.NODE_ENV !== 'production') {
       console.log(`🔓 开发环境：跳过登录锁定检查 (${email})`);
@@ -369,7 +369,8 @@ router.post('/send-verification-code', async (req, res) => {
     }
 
     // 检查是否可以发送（防止频繁发送）
-    const canSend = verificationCodeManager.canSend(email);
+    const identifier = `platform:${email}`;
+    const canSend = await verificationCodeManager.canSend(identifier);
     if (!canSend.allowed) {
       return res.status(429).json({
         code: 429,
@@ -397,7 +398,7 @@ router.post('/send-verification-code', async (req, res) => {
     await emailService.sendVerificationCode(email, code);
 
     // 存储验证码
-    verificationCodeManager.store(email, code);
+    await verificationCodeManager.store(identifier, code);
 
     res.json({
       code: 200,
@@ -423,13 +424,21 @@ router.post('/login-with-code', async (req, res) => {
   try {
     const { email, code } = req.body;
 
+    console.log('[平台验证码登录] 请求参数:', { email, code: code ? '******' : undefined });
+
     if (!email || !code) {
       return res.status(400).json({ code: 400, message: '邮箱和验证码不能为空' });
     }
 
     // 验证验证码
-    const result = verificationCodeManager.verify(email, code);
+    const identifier = `platform:${email}`;
+    console.log('[平台验证码登录] 使用标识符:', identifier);
+
+    const result = await verificationCodeManager.verify(identifier, code);
+    console.log('[平台验证码登录] 验证结果:', result);
+
     if (!result.valid) {
+      console.log('[平台验证码登录] 验证码无效:', result.message);
       return res.status(400).json({
         code: 400,
         message: result.message,
@@ -439,6 +448,8 @@ router.post('/login-with-code', async (req, res) => {
 
     // 查找用户
     const user = await PlatformUser.findOne({ where: { email } });
+    console.log('[平台验证码登录] 用户查询结果:', user ? `找到用户 ${user.id}` : '未找到用户');
+
     if (!user) {
       return res.status(404).json({ code: 404, message: '用户不存在' });
     }
@@ -446,6 +457,7 @@ router.post('/login-with-code', async (req, res) => {
     // 生成token
     const token = generatePlatformToken(user);
 
+    console.log('[平台验证码登录] 登录成功:', user.id);
     res.json({
       code: 200,
       message: '登录成功',
@@ -461,7 +473,7 @@ router.post('/login-with-code', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('验证码登录错误:', error);
+    console.error('[平台验证码登录] 错误:', error);
     res.status(500).json({ code: 500, message: '登录失败' });
   }
 });
@@ -477,7 +489,7 @@ router.post('/logout', async (req, res) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const decoded = jwt.decode(token);
-      
+
       if (decoded && decoded.exp) {
         tokenBlacklist.add(token, decoded.exp * 1000);
       }

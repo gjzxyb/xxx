@@ -11,6 +11,9 @@ const bcrypt = require('bcryptjs');
 function createUserModel(sequelize, options = {}) {
   const { includeProjectId = false } = options;
 
+  // 邮箱格式正则表达式
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   // 基础字段定义
   const fields = {
     id: {
@@ -47,6 +50,11 @@ function createUserModel(sequelize, options = {}) {
       type: DataTypes.STRING(20),
       allowNull: true,
       comment: '手机号'
+    },
+    email: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: '邮箱地址'
     }
   };
 
@@ -65,13 +73,25 @@ function createUserModel(sequelize, options = {}) {
     tableName: 'users',
     hooks: {
       beforeCreate: async (user) => {
+        // 密码加密
         if (user.password) {
           user.password = await bcrypt.hash(user.password, 10);
         }
+
+        // 自动填充 email 字段：如果 studentId 是 email 格式，且 email 字段为空
+        if (!user.email && user.studentId && emailRegex.test(user.studentId)) {
+          user.email = user.studentId;
+        }
       },
       beforeUpdate: async (user) => {
+        // 密码加密
         if (user.changed('password')) {
           user.password = await bcrypt.hash(user.password, 10);
+        }
+
+        // 自动填充 email 字段：如果 studentId 改变且是 email 格式，且 email 字段为空
+        if (user.changed('studentId') && !user.email && user.studentId && emailRegex.test(user.studentId)) {
+          user.email = user.studentId;
         }
       }
     }

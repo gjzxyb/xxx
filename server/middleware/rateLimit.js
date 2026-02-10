@@ -127,7 +127,7 @@ const passwordResetLimiter = rateLimit({
 
 /**
  * 验证码发送速率限制
- * 每5分钟最多5次，仅基于邮箱限制（不使用IP）
+ * 每5分钟最多5次，基于项目ID+邮箱限制（不使用IP）
  */
 const verificationCodeLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5分钟
@@ -139,15 +139,16 @@ const verificationCodeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {
-    // 只使用邮箱作为限制key，不使用IP
+    // 使用项目ID+邮箱作为限制key，不同项目独立计数
     const email = req.body?.email || 'anonymous';
-    return `verification-code:${email}`;
+    const projectId = req.body?.projectId || req.query?.projectId || 'unknown';
+    return `verification-code:${projectId}:${email}`;
   }
 });
 
 /**
  * 验证码登录速率限制
- * 每15分钟最多10次，基于邮箱而非IP
+ * 每15分钟最多10次，基于项目ID+邮箱而非IP
  */
 const codeLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -159,9 +160,10 @@ const codeLoginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {
-    // 只使用邮箱，不使用IP
+    // 使用项目ID+邮箱，不同项目独立计数
     const email = req.body?.email || 'anonymous';
-    return `code-login:${email}`;
+    const projectId = req.body?.projectId || req.query?.projectId || 'unknown';
+    return `code-login:${projectId}:${email}`;
   }
 });
 

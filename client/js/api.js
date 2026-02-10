@@ -106,7 +106,7 @@ async function request(url, options = {}) {
 
     let data;
     const contentType = response.headers.get('content-type');
-    
+
     // 安全地解析响应
     try {
       if (contentType && contentType.includes('application/json')) {
@@ -130,7 +130,7 @@ async function request(url, options = {}) {
       console.warn('CSRF token 无效，尝试刷新...');
       // 等待一小段时间让服务器设置新的 cookie
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // 重新获取 CSRF token
       const newCsrfToken = getCsrfToken();
       if (newCsrfToken && newCsrfToken !== headers['X-CSRF-Token']) {
@@ -177,9 +177,9 @@ const api = {
 
     getProfile: () => request('/auth/profile'),
 
-    changePassword: (oldPassword, newPassword) => request('/auth/password', {
+    changePassword: (oldPassword, newPassword, email) => request('/auth/password', {
       method: 'PUT',
-      body: JSON.stringify({ oldPassword, newPassword })
+      body: JSON.stringify({ oldPassword, newPassword, email })
     }),
 
     getPasswordPolicy: () => request('/auth/password-policy')
@@ -281,24 +281,24 @@ const api = {
       const token = getToken();
       const urlParams = new URLSearchParams(window.location.search);
       const projectId = urlParams.get('projectId');
-      
+
       // 创建一个隐藏的form来发起POST请求并下载文件
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = API_BASE + '/admin/export' + (projectId ? '?projectId=' + projectId : '');
       form.target = '_blank';
-      
+
       const tokenInput = document.createElement('input');
       tokenInput.type = 'hidden';
       tokenInput.name = 'token';
       tokenInput.value = token;
       form.appendChild(tokenInput);
-      
+
       document.body.appendChild(form);
       form.submit();
       document.body.removeChild(form);
     },
-    
+
     // 保留旧的exportUrl方法以兼容，但标记为废弃
     exportUrl: () => {
       console.warn('exportUrl已废弃，请使用api.admin.export()方法');

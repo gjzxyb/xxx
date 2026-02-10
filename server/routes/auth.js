@@ -30,9 +30,8 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
       return error(res, '缺少项目信息', 400);
     }
 
-    // 安全性：检查IP是否被锁定（允许同一IP登录多个用户）
-    const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
-    const lockIdentifier = `${projectId}:${clientIp}`;
+    // 安全性：检查账号是否被锁定（基于学号，避免同一IP下多用户受影响）
+    const lockIdentifier = `${projectId}:${studentId}`;
     const locked = await loginAttemptTracker.isLocked(lockIdentifier);
     if (locked) {
       return res.status(423).json({
@@ -170,17 +169,30 @@ router.get('/profile', authenticate, async (req, res) => {
  * 修改密码
  * PUT /api/auth/password
  * 安全性：验证旧密码，检查新密码强度
+ * 支持同时更新邮箱地址（可选）
  */
 router.put('/password', projectDb, authenticateProject, async (req, res) => {
   try {
     // 安全日志：记录操作但不记录敏感信息
     console.log('修改密码请求开始 - 用户ID:', req.user?.id);
 
-    const { oldPassword, newPassword } = req.body;
+    const { oldPassword, newPassword, email } = req.body;
 
     // 基本验证
     if (!oldPassword || !newPassword) {
       return error(res, '请输入原密码和新密码');
+    }
+
+    // 验证邮箱格式（如果提供）
+    if (email !== undefined && email !== null && email !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          code: 400,
+          message: '邮箱格式不正确',
+          errors: []
+        });
+      }
     }
 
     // 检查新密码格式
@@ -235,13 +247,37 @@ router.put('/password', projectDb, authenticateProject, async (req, res) => {
       return error(res, '原密码错误');
     }
 
+    // 检查邮箱是否已被其他用户使用
+    if (email !== undefined && email !== null && email !== '') {
+      const { User } = req.projectModels;
+      const existingUser = await User.findOne({
+        where: { email }
+      });
+
+      // 如果找到了用户，且不是当前用户自己，则拒绝
+      if (existingUser && existingUser.id !== req.user.id) {
+        return res.status(400).json({
+          code: 400,
+          message: '该邮箱已被其他账号绑定',
+          errors: []
+        });
+      }
+    }
+
     // 更新密码
     req.user.password = newPassword;
+
+    // 更新邮箱（如果提供）
+    if (email !== undefined && email !== null && email !== '') {
+      req.user.email = email;
+      console.log('更新用户邮箱 - 用户ID:', req.user?.id);
+    }
+
     await req.user.save();
 
     // 安全日志：记录成功但不记录密码信息
     console.log('密码修改成功 - 用户ID:', req.user?.id);
-    success(res, null, '密码修改成功');
+    success(res, null, email ? '密码和邮箱修改成功' : '密码修改成功');
   } catch (err) {
     // 安全日志：记录错误但不暴露敏感信息
     console.error('修改密码失败 - 用户ID:', req.user?.id, '错误:', err.message);
@@ -318,7 +354,8 @@ router.post('/send-verification-code', verificationCodeLimiter, async (req, res)
     }
 
     // 检查是否可以发送（防止频繁发送）
-    const canSendResult = await verificationCodeManager.canSend(email);
+    const identifier = `${projectId}:${email}`;
+    const canSendResult = await verificationCodeManager.canSend(identifier);
     if (!canSendResult.allowed) {
       return res.status(429).json({
         code: 429,
@@ -348,7 +385,7 @@ router.post('/send-verification-code', verificationCodeLimiter, async (req, res)
     await emailService.sendVerificationCode(email, code);
 
     // 存储验证码
-    verificationCodeManager.store(email, code);
+    await verificationCodeManager.store(identifier, code);
 
     success(res, {
       message: '验证码已发送到您的邮箱',
@@ -368,18 +405,26 @@ router.post('/login-with-code', codeLoginLimiter, async (req, res) => {
   try {
     const { email, code, projectId } = req.body;
 
+    console.log('[验证码登录] 请求参数:', { email, code: code ? '******' : undefined, projectId });
+
     // 验证必填字段
     if (!email || !code) {
+      console.log('[验证码登录] 缺少必填字段');
       return error(res, '请输入邮箱和验证码', 400);
     }
 
     if (!projectId) {
+      console.log('[验证码登录] 缺少项目信息');
       return error(res, '缺少项目信息', 400);
     }
 
     // 验证验证码
-    const verifyResult = verificationCodeManager.verify(email, code);
+    const identifier = `${projectId}:${email}`;
+    const verifyResult = await verificationCodeManager.verify(identifier, code);
+    console.log('[验证码登录] 验证码验证结果:', verifyResult);
+
     if (!verifyResult.valid) {
+      console.log('[验证码登录] 验证码无效:', verifyResult.message);
       return res.status(400).json({
         code: 400,
         message: verifyResult.message,
@@ -390,6 +435,7 @@ router.post('/login-with-code', codeLoginLimiter, async (req, res) => {
     // 查询用户
     const dbManager = require('../lib/DatabaseManager');
     if (!dbManager.projectDbExists(projectId)) {
+      console.log('[验证码登录] 项目不存在:', projectId);
       return error(res, '项目不存在', 404);
     }
 
@@ -397,19 +443,23 @@ router.post('/login-with-code', codeLoginLimiter, async (req, res) => {
     const { User } = projectModels;
 
     const user = await User.findOne({ where: { email } });
+    console.log('[验证码登录] 用户查询结果:', user ? `找到用户 ${user.id}` : '未找到用户');
+
     if (!user) {
+      console.log('[验证码登录] 用户不存在:', email);
       return error(res, '用户不存在', 404);
     }
 
     // 生成 token
     const token = generateToken({ ...user.toJSON(), projectId });
 
+    console.log('[验证码登录] 登录成功:', user.id);
     success(res, {
       token,
       user: { ...user.toSafeObject(), projectId }
     }, '登录成功');
   } catch (err) {
-    console.error('验证码登录错误:', err);
+    console.error('[验证码登录] 错误:', err);
     error(res, '登录失败，请稍后重试', 500);
   }
 });

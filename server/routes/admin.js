@@ -108,13 +108,113 @@ router.get('/students', authenticateProject, requireProjectAdmin, async (req, re
 });
 
 /**
+ * 获取概览统计数据
+ * GET /api/admin/overview
+ */
+router.get('/overview', authenticateProject, requireProjectAdmin, async (req, res) => {
+  try {
+    const { User, Subject, Selection } = req.projectModels;
+
+    const totalStudents = await User.count({ where: { role: 'student' } });
+    const selectedCount = await Selection.count({ where: { status: 'submitted' } });
+    const notSelectedCount = totalStudents - selectedCount;
+    const totalSubjects = await Subject.count();
+
+    success(res, {
+      totalStudents,
+      selectedCount,
+      notSelectedCount,
+      totalSubjects
+    });
+  } catch (err) {
+    console.error('获取概览失败:', err);
+    error(res, '获取概览失败', 500);
+  }
+});
+
+/**
+ * 更新项目选科时间设置
+ * PUT /api/admin/selection-time
+ */
+router.put('/selection-time', authenticateProject, requireProjectAdmin, validateTimeSettings, async (req, res) => {
+  try {
+    const { selectionStartTime, selectionEndTime } = req.body;
+    const projectId = req.projectId;
+
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return error(res, '项目不存在');
+    }
+
+    // 验证：结束时间必须晚于开始时间
+    if (selectionStartTime && selectionEndTime) {
+      if (new Date(selectionEndTime) <= new Date(selectionStartTime)) {
+        return error(res, '结束时间必须晚于开始时间');
+      }
+    }
+
+    await project.update({
+      selectionStartTime: selectionStartTime || null,
+      selectionEndTime: selectionEndTime || null
+    });
+
+    success(res, null, '时间设置已更新');
+  } catch (err) {
+    console.error('更新选科时间错误:', err);
+    error(res, '更新失败', 500);
+  }
+});
+
+/**
+ * 获取所有学生列表
+ * GET /api/admin/students
+ */
+router.get('/students', authenticateProject, requireProjectAdmin, async (req, res) => {
+  try {
+    const { User, Selection, Subject } = req.projectModels;
+    const { className, page = 1, limit = 20 } = req.query;
+
+    const where = { role: 'student' };
+    if (className) where.className = className;
+
+    const offset = (page - 1) * limit;
+    const { count, rows } = await User.findAndCountAll({
+      where,
+      attributes: { exclude: ['password'] },
+      include: [{
+        model: Selection,
+        as: 'selection',
+        include: [
+          { model: Subject, as: 'physicsHistorySubject' },
+          { model: Subject, as: 'electiveOneSubject' },
+          { model: Subject, as: 'electiveTwoSubject' }
+        ]
+      }],
+      offset,
+      limit: parseInt(limit),
+      order: [['className', 'ASC'], ['studentId', 'ASC']]
+    });
+
+    success(res, {
+      data: rows,
+      total: count,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (err) {
+    console.error('获取学生列表失败:', err);
+    error(res, '获取学生列表失败', 500);
+  }
+});
+
+/**
  * 创建学生
  * POST /api/admin/students
  */
 router.post('/students', authenticateProject, requireProjectAdmin, adminCreateLimiter, validateUserCreate, async (req, res) => {
   try {
     const { User } = req.projectModels;
-    const { studentId, name, className, password } = req.body;
+    const { studentId, name, className, password, email } = req.body;
 
     if (!studentId || !name) {
       return error(res, '学号和姓名不能为空');
@@ -126,14 +226,32 @@ router.post('/students', authenticateProject, requireProjectAdmin, adminCreateLi
       return error(res, '学号已存在');
     }
 
+    // 检查邮箱是否已被其他用户使用（如果提供）
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          code: 400,
+          message: '邮箱格式不正确',
+          errors: []
+        });
+      }
+
+      const existingEmail = await User.findOne({ where: { email } });
+      if (existingEmail) {
+        return error(res, '该邮箱已被其他账号使用');
+      }
+    }
+
     // 生成随机初始密码（如果未提供）
     const crypto = require('crypto');
     const initialPassword = password || crypto.randomBytes(8).toString('hex');
-    
+
     const student = await User.create({
       studentId,
       name,
       className,
+      email: email || null,
       password: initialPassword,
       role: 'student'
     });
@@ -142,7 +260,8 @@ router.post('/students', authenticateProject, requireProjectAdmin, adminCreateLi
       id: student.id,
       studentId: student.studentId,
       name: student.name,
-      className: student.className
+      className: student.className,
+      email: student.email
     }, '添加成功');
   } catch (err) {
     console.error('添加学生失败:', err);
@@ -170,23 +289,65 @@ router.post('/import-students', authenticateProject, requireProjectAdmin, import
     try {
       let successCount = 0;
       const errors = [];
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      // 收集所有邮箱用于检查重复
+      const emailsToImport = students
+        .map(s => s.email)
+        .filter(email => email && email.trim());
+
+      // 检查导入数据内部的邮箱重复
+      const emailCounts = {};
+      emailsToImport.forEach(email => {
+        emailCounts[email] = (emailCounts[email] || 0) + 1;
+      });
+      const duplicateEmails = Object.keys(emailCounts).filter(email => emailCounts[email] > 1);
+      if (duplicateEmails.length > 0) {
+        await transaction.rollback();
+        return res.json({
+          code: 400,
+          data: { success: 0, failed: duplicateEmails.length, errors: [`导入数据中存在重复邮箱: ${duplicateEmails.join(', ')}`] },
+          message: '导入数据中存在重复邮箱'
+        });
+      }
 
       // 数据验证阶段
       for (const student of students) {
-        const { studentId, name } = student;
+        const { studentId, name, email } = student;
 
         if (!studentId || !name) {
           errors.push(`学号 ${studentId || '未知'}: 学号和姓名不能为空`);
           continue;
         }
 
-        const existingStudent = await User.findOne({ 
+        // 验证邮箱格式（如果提供）
+        if (email && !emailRegex.test(email)) {
+          errors.push(`学号 ${studentId}: 邮箱格式不正确`);
+          continue;
+        }
+
+        // 检查学号是否已存在
+        const existingStudent = await User.findOne({
           where: { studentId, role: 'student' },
-          transaction 
+          transaction
         });
-        
+
         if (existingStudent) {
           errors.push(`学号 ${studentId}: 已存在`);
+          continue;
+        }
+
+        // 检查邮箱是否已被使用（如果提供）
+        if (email) {
+          const existingEmail = await User.findOne({
+            where: { email },
+            transaction
+          });
+
+          if (existingEmail) {
+            errors.push(`学号 ${studentId}: 邮箱 ${email} 已被其他账号使用`);
+            continue;
+          }
         }
       }
 
@@ -202,16 +363,17 @@ router.post('/import-students', authenticateProject, requireProjectAdmin, import
 
       // 批量创建用户
       for (const student of students) {
-        const { studentId, name, className, password } = student;
-        
+        const { studentId, name, className, password, email } = student;
+
         // 生成随机初始密码（如果未提供）
         const crypto = require('crypto');
         const initialPassword = password || crypto.randomBytes(8).toString('hex');
-        
+
         await User.create({
           studentId,
           name,
           className,
+          email: email || null,
           password: initialPassword,
           role: 'student'
         }, { transaction });
@@ -292,7 +454,7 @@ router.put('/registration-setting', authenticateProject, requireProjectAdmin, as
 router.put('/students/:id', authenticateProject, requireProjectAdmin, async (req, res) => {
   try {
     const { User } = req.projectModels;
-    const { studentId, name, className } = req.body;
+    const { studentId, name, className, email } = req.body;
     const id = req.params.id;
 
     const student = await User.findByPk(id);
@@ -308,10 +470,32 @@ router.put('/students/:id', authenticateProject, requireProjectAdmin, async (req
       }
     }
 
+    // 检查邮箱冲突（如果提供了邮箱且与当前邮箱不同）
+    if (email !== undefined && email !== student.email) {
+      if (email) {
+        // 验证邮箱格式
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({
+            code: 400,
+            message: '邮箱格式不正确',
+            errors: []
+          });
+        }
+
+        // 检查邮箱是否已被其他用户使用
+        const existingEmail = await User.findOne({ where: { email } });
+        if (existingEmail && existingEmail.id !== student.id) {
+          return error(res, '该邮箱已被其他账号使用');
+        }
+      }
+    }
+
     await student.update({
       studentId: studentId || student.studentId,
       name: name || student.name,
-      className: className !== undefined ? className : student.className
+      className: className !== undefined ? className : student.className,
+      email: email !== undefined ? email : student.email
     });
 
     success(res, student, '更新成功');
@@ -360,13 +544,13 @@ router.post('/students/:id/reset-password', authenticateProject, requireProjectA
     // 生成随机临时密码
     const crypto = require('crypto');
     const newPassword = crypto.randomBytes(8).toString('hex');
-    
+
     await student.update({
       password: newPassword
     });
 
     // 返回新密码供管理员告知学生
-    success(res, { 
+    success(res, {
       studentId: student.studentId,
       newPassword: newPassword
     }, '密码已重置成功');

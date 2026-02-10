@@ -16,10 +16,10 @@ class VerificationCodeManager {
     // 同一邮箱发送间隔（秒）
     // 开发环境：10秒；生产环境30秒（避免过于严格）
     this.sendInterval = process.env.NODE_ENV === 'production' ? 30 : 10;
-    
+
     // Redis 键前缀
     this.redisPrefix = 'verification_code:';
-    
+
     // 定期清理过期验证码（仅在内存模式下需要）
     setInterval(() => this.cleanup(), 60000); // 每分钟清理一次
   }
@@ -34,8 +34,8 @@ class VerificationCodeManager {
   /**
    * 获取 Redis 键名
    */
-  _getRedisKey(email) {
-    return `${this.redisPrefix}${email}`;
+  _getRedisKey(identifier) {
+    return `${this.redisPrefix}${identifier}`;
   }
 
   /**
@@ -47,16 +47,17 @@ class VerificationCodeManager {
 
   /**
    * 检查是否可以发送验证码（防止频繁发送）
+   * @param {string} identifier - 标识符（projectId:email 或 platform:email）
    */
-  async canSend(email) {
+  async canSend(identifier) {
     if (this._useRedis()) {
-      return await this._canSendRedis(email);
+      return await this._canSendRedis(identifier);
     }
-    return this._canSendMemory(email);
+    return this._canSendMemory(identifier);
   }
 
-  _canSendMemory(email) {
-    const record = this.codes.get(email);
+  _canSendMemory(identifier) {
+    const record = this.codes.get(identifier);
     if (!record) return { allowed: true };
 
     const now = Date.now();
@@ -75,12 +76,12 @@ class VerificationCodeManager {
     return { allowed: true };
   }
 
-  async _canSendRedis(email) {
+  async _canSendRedis(identifier) {
     try {
       const redis = redisConfig.getRedisClient();
-      const key = this._getRedisKey(email);
+      const key = this._getRedisKey(identifier);
       const data = await redis.get(key);
-      
+
       if (!data) return { allowed: true };
 
       const record = JSON.parse(data);
@@ -101,23 +102,25 @@ class VerificationCodeManager {
     } catch (error) {
       console.error('Redis canSend 错误:', error);
       // Redis 失败时降级到内存存储
-      return this._canSendMemory(email);
+      return this._canSendMemory(identifier);
     }
   }
 
   /**
    * 存储验证码
+   * @param {string} identifier - 标识符（projectId:email 或 platform:email）
+   * @param {string} code - 验证码
    */
-  async store(email, code) {
+  async store(identifier, code) {
     if (this._useRedis()) {
-      return await this._storeRedis(email, code);
+      return await this._storeRedis(identifier, code);
     }
-    return this._storeMemory(email, code);
+    return this._storeMemory(identifier, code);
   }
 
-  _storeMemory(email, code) {
+  _storeMemory(identifier, code) {
     const expiresAt = Date.now() + this.expiryMinutes * 60 * 1000;
-    this.codes.set(email, {
+    this.codes.set(identifier, {
       code,
       expiresAt,
       sentAt: Date.now(),
@@ -125,12 +128,12 @@ class VerificationCodeManager {
     });
   }
 
-  async _storeRedis(email, code) {
+  async _storeRedis(identifier, code) {
     try {
       const redis = redisConfig.getRedisClient();
-      const key = this._getRedisKey(email);
+      const key = this._getRedisKey(identifier);
       const expiresAt = Date.now() + this.expiryMinutes * 60 * 1000;
-      
+
       const data = JSON.stringify({
         code,
         expiresAt,
@@ -143,22 +146,24 @@ class VerificationCodeManager {
     } catch (error) {
       console.error('Redis store 错误:', error);
       // 降级到内存存储
-      this._storeMemory(email, code);
+      this._storeMemory(identifier, code);
     }
   }
 
   /**
    * 验证验证码
+   * @param {string} identifier - 标识符（projectId:email 或 platform:email）
+   * @param {string} code - 验证码
    */
-  async verify(email, code) {
+  async verify(identifier, code) {
     if (this._useRedis()) {
-      return await this._verifyRedis(email, code);
+      return await this._verifyRedis(identifier, code);
     }
-    return this._verifyMemory(email, code);
+    return this._verifyMemory(identifier, code);
   }
 
-  _verifyMemory(email, code) {
-    const record = this.codes.get(email);
+  _verifyMemory(identifier, code) {
+    const record = this.codes.get(identifier);
 
     if (!record) {
       return {
@@ -169,7 +174,7 @@ class VerificationCodeManager {
 
     // 检查是否过期
     if (Date.now() > record.expiresAt) {
-      this.codes.delete(email);
+      this.codes.delete(identifier);
       return {
         valid: false,
         message: '验证码已过期，请重新获取'
@@ -178,7 +183,7 @@ class VerificationCodeManager {
 
     // 检查尝试次数
     if (record.attempts >= this.maxAttempts) {
-      this.codes.delete(email);
+      this.codes.delete(identifier);
       return {
         valid: false,
         message: '验证码尝试次数过多，请重新获取'
@@ -199,17 +204,17 @@ class VerificationCodeManager {
     }
 
     // 验证成功，删除验证码
-    this.codes.delete(email);
+    this.codes.delete(identifier);
     return {
       valid: true,
       message: '验证成功'
     };
   }
 
-  async _verifyRedis(email, code) {
+  async _verifyRedis(identifier, code) {
     try {
       const redis = redisConfig.getRedisClient();
-      const key = this._getRedisKey(email);
+      const key = this._getRedisKey(identifier);
       const data = await redis.get(key);
 
       if (!data) {
@@ -249,7 +254,7 @@ class VerificationCodeManager {
         if (ttl > 0) {
           await redis.setEx(key, ttl, JSON.stringify(record));
         }
-        
+
         const remaining = this.maxAttempts - record.attempts;
         return {
           valid: false,
@@ -267,7 +272,7 @@ class VerificationCodeManager {
     } catch (error) {
       console.error('Redis verify 错误:', error);
       // 降级到内存存储
-      return this._verifyMemory(email, code);
+      return this._verifyMemory(identifier, code);
     }
   }
 
@@ -293,8 +298,8 @@ class VerificationCodeManager {
   /**
    * 获取验证码剩余有效时间（秒）
    */
-  getRemainingTime(email) {
-    const record = this.codes.get(email);
+  getRemainingTime(identifier) {
+    const record = this.codes.get(identifier);
     if (!record) return 0;
 
     const remaining = Math.max(0, Math.floor((record.expiresAt - Date.now()) / 1000));
@@ -302,20 +307,20 @@ class VerificationCodeManager {
   }
 
   /**
-   * 删除指定邮箱的验证码
+   * 删除指定标识符的验证码
    */
-  async remove(email) {
+  async remove(identifier) {
     if (this._useRedis()) {
       try {
         const redis = redisConfig.getRedisClient();
-        const key = this._getRedisKey(email);
+        const key = this._getRedisKey(identifier);
         await redis.del(key);
         return true;
       } catch (error) {
         console.error('Redis remove 错误:', error);
       }
     }
-    return this.codes.delete(email);
+    return this.codes.delete(identifier);
   }
 
   /**
