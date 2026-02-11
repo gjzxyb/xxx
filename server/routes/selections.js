@@ -6,6 +6,7 @@ const { projectDb } = require('../middleware/projectDb');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validateSelectionSubmit } = require('../middleware/validation');
 const { selectionLimiter, exportLimiter } = require('../middleware/rateLimit');
+const { getCurrentTimeInTimezone, formatTimeWithTimezone } = require('../utils/timezone');
 
 // 动态导入 Project 模型
 const getProject = () => {
@@ -31,15 +32,23 @@ async function checkSelectionTime(projectId) {
     return { open: false, message: '选科时间未设置' };
   }
 
-  const now = new Date();
+  // 使用中国时区进行时间比较
+  const timezone = process.env.TIMEZONE || 'Asia/Shanghai';
+  const now = getCurrentTimeInTimezone(timezone);
   const start = new Date(selectionStartTime);
   const end = new Date(selectionEndTime);
 
   if (now < start) {
-    return { open: false, message: `选科将于 ${selectionStartTime} 开始` };
+    return { 
+      open: false, 
+      message: `选科将于 ${formatTimeWithTimezone(selectionStartTime, timezone)} 开始` 
+    };
   }
   if (now > end) {
-    return { open: false, message: `选科已于 ${selectionEndTime} 结束` };
+    return { 
+      open: false, 
+      message: `选科已于 ${formatTimeWithTimezone(selectionEndTime, timezone)} 结束` 
+    };
   }
 
   return { open: true, message: '选科进行中' };

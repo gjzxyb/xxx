@@ -5,13 +5,13 @@ const { success, error } = require('../utils/response');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validatePasswordMiddleware } = require('../middleware/passwordPolicy');
 const { validateTimeSettings, validateUserCreate, validateStudentsImport } = require('../middleware/validation');
-const { exportLimiter, importLimiter, adminCreateLimiter } = require('../middleware/rateLimit');
+const { exportLimiter, importLimiter, adminCreateLimiter, adminLimiter, adminModifyLimiter } = require('../middleware/rateLimit');
 
 /**
  * 获取概览统计数据
  * GET /api/admin/overview
  */
-router.get('/overview', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.get('/overview', authenticateProject, requireProjectAdmin, adminLimiter, async (req, res) => {
   try {
     const { User, Subject, Selection } = req.projectModels;
 
@@ -36,7 +36,7 @@ router.get('/overview', authenticateProject, requireProjectAdmin, async (req, re
  * 更新项目选科时间设置
  * PUT /api/admin/selection-time
  */
-router.put('/selection-time', authenticateProject, requireProjectAdmin, validateTimeSettings, async (req, res) => {
+router.put('/selection-time', authenticateProject, requireProjectAdmin, adminModifyLimiter, validateTimeSettings, async (req, res) => {
   try {
     const { selectionStartTime, selectionEndTime } = req.body;
     const projectId = req.projectId;
@@ -69,107 +69,7 @@ router.put('/selection-time', authenticateProject, requireProjectAdmin, validate
  * 获取所有学生列表
  * GET /api/admin/students
  */
-router.get('/students', authenticateProject, requireProjectAdmin, async (req, res) => {
-  try {
-    const { User, Selection, Subject } = req.projectModels;
-    const { className, page = 1, limit = 20 } = req.query;
-
-    const where = { role: 'student' };
-    if (className) where.className = className;
-
-    const offset = (page - 1) * limit;
-    const { count, rows } = await User.findAndCountAll({
-      where,
-      attributes: { exclude: ['password'] },
-      include: [{
-        model: Selection,
-        as: 'selection',
-        include: [
-          { model: Subject, as: 'physicsHistorySubject' },
-          { model: Subject, as: 'electiveOneSubject' },
-          { model: Subject, as: 'electiveTwoSubject' }
-        ]
-      }],
-      offset,
-      limit: parseInt(limit),
-      order: [['className', 'ASC'], ['studentId', 'ASC']]
-    });
-
-    success(res, {
-      data: rows,
-      total: count,
-      page: parseInt(page),
-      limit: parseInt(limit)
-    });
-  } catch (err) {
-    console.error('获取学生列表失败:', err);
-    error(res, '获取学生列表失败', 500);
-  }
-});
-
-/**
- * 获取概览统计数据
- * GET /api/admin/overview
- */
-router.get('/overview', authenticateProject, requireProjectAdmin, async (req, res) => {
-  try {
-    const { User, Subject, Selection } = req.projectModels;
-
-    const totalStudents = await User.count({ where: { role: 'student' } });
-    const selectedCount = await Selection.count({ where: { status: 'submitted' } });
-    const notSelectedCount = totalStudents - selectedCount;
-    const totalSubjects = await Subject.count();
-
-    success(res, {
-      totalStudents,
-      selectedCount,
-      notSelectedCount,
-      totalSubjects
-    });
-  } catch (err) {
-    console.error('获取概览失败:', err);
-    error(res, '获取概览失败', 500);
-  }
-});
-
-/**
- * 更新项目选科时间设置
- * PUT /api/admin/selection-time
- */
-router.put('/selection-time', authenticateProject, requireProjectAdmin, validateTimeSettings, async (req, res) => {
-  try {
-    const { selectionStartTime, selectionEndTime } = req.body;
-    const projectId = req.projectId;
-
-    const project = await Project.findByPk(projectId);
-    if (!project) {
-      return error(res, '项目不存在');
-    }
-
-    // 验证：结束时间必须晚于开始时间
-    if (selectionStartTime && selectionEndTime) {
-      if (new Date(selectionEndTime) <= new Date(selectionStartTime)) {
-        return error(res, '结束时间必须晚于开始时间');
-      }
-    }
-
-    await project.update({
-      selectionStartTime: selectionStartTime || null,
-      selectionEndTime: selectionEndTime || null
-    });
-
-    success(res, null, '时间设置已更新');
-  } catch (err) {
-    console.error('更新选科时间错误:', err);
-    error(res, '更新失败', 500);
-  }
-});
-
-/**
- * 获取所有学生列表
- * GET /api/admin/students
- */
-router.get('/students', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.get('/students', authenticateProject, requireProjectAdmin, adminLimiter, async (req, res) => {
   try {
     const { User, Selection, Subject } = req.projectModels;
     const { className, page = 1, limit = 20 } = req.query;
@@ -405,7 +305,7 @@ router.post('/import-students', authenticateProject, requireProjectAdmin, import
  * 获取注册开关状态
  * GET /api/admin/registration-setting
  */
-router.get('/registration-setting', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.get('/registration-setting', authenticateProject, requireProjectAdmin, adminLimiter, async (req, res) => {
   try {
     const projectId = req.projectId;
     const project = await Project.findByPk(projectId);
@@ -427,7 +327,7 @@ router.get('/registration-setting', authenticateProject, requireProjectAdmin, as
  * 切换注册开关
  * PUT /api/admin/registration-setting
  */
-router.put('/registration-setting', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.put('/registration-setting', authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { enabled } = req.body;
     const projectId = req.projectId;
@@ -451,7 +351,7 @@ router.put('/registration-setting', authenticateProject, requireProjectAdmin, as
  * 更新学生信息
  * PUT /api/admin/students/:id
  */
-router.put('/students/:id', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.put('/students/:id', authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const { studentId, name, className, email } = req.body;
@@ -509,7 +409,7 @@ router.put('/students/:id', authenticateProject, requireProjectAdmin, async (req
  * 删除学生
  * DELETE /api/admin/students/:id
  */
-router.delete('/students/:id', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.delete('/students/:id', authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const id = req.params.id;
@@ -530,8 +430,9 @@ router.delete('/students/:id', authenticateProject, requireProjectAdmin, async (
 /**
  * 重置学生密码
  * POST /api/admin/students/:id/reset-password
+ * 安全性：不返回明文密码，建议通过邮件或其他安全方式通知学生
  */
-router.post('/students/:id/reset-password', authenticateProject, requireProjectAdmin, async (req, res) => {
+router.post('/students/:id/reset-password', authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { User } = req.projectModels;
     const id = req.params.id;
@@ -549,10 +450,11 @@ router.post('/students/:id/reset-password', authenticateProject, requireProjectA
       password: newPassword
     });
 
-    // 返回新密码供管理员告知学生
+    // 安全性：不返回明文密码
+    // TODO: 实现邮件通知功能，将新密码发送到学生邮箱
     success(res, {
       studentId: student.studentId,
-      newPassword: newPassword
+      message: '密码已重置，请通过安全渠道告知学生新密码'
     }, '密码已重置成功');
   } catch (err) {
     console.error('重置密码失败:', err);

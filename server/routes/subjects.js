@@ -4,12 +4,13 @@ const { success, error, notFound } = require('../utils/response');
 const { projectDb } = require('../middleware/projectDb');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validateSubject, validateIdParam } = require('../middleware/validation');
+const { adminLimiter, adminCreateLimiter, adminModifyLimiter } = require('../middleware/rateLimit');
 
 /**
  * 获取所有科目
  * GET /api/subjects
  */
-router.get('/', projectDb, authenticateProject, async (req, res) => {
+router.get('/', projectDb, authenticateProject, adminLimiter, async (req, res) => {
   try {
     const { category, active } = req.query;
     const { Subject } = req.projectModels;
@@ -34,7 +35,7 @@ router.get('/', projectDb, authenticateProject, async (req, res) => {
  * 获取单个科目
  * GET /api/subjects/:id
  */
-router.get('/:id', projectDb, authenticateProject, async (req, res) => {
+router.get('/:id', projectDb, authenticateProject, adminLimiter, async (req, res) => {
   try {
     const { Subject } = req.projectModels;
     const subject = await Subject.findByPk(req.params.id);
@@ -54,7 +55,7 @@ router.get('/:id', projectDb, authenticateProject, async (req, res) => {
  * 创建科目（管理员）
  * POST /api/subjects
  */
-router.post('/', projectDb, authenticateProject, requireProjectAdmin, validateSubject, async (req, res) => {
+router.post('/', projectDb, authenticateProject, requireProjectAdmin, adminCreateLimiter, validateSubject, async (req, res) => {
   try {
     const { name, category, description, maxCapacity } = req.body;
     const { Subject } = req.projectModels;
@@ -83,7 +84,7 @@ router.post('/', projectDb, authenticateProject, requireProjectAdmin, validateSu
  * 更新科目（管理员）
  * PUT /api/subjects/:id
  */
-router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
+router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { name, category, description, maxCapacity, isActive } = req.body;
     const { Subject } = req.projectModels;
@@ -112,7 +113,7 @@ router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProje
  * 删除科目（管理员）
  * DELETE /api/subjects/:id
  */
-router.delete('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, async (req, res) => {
+router.delete('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { Subject } = req.projectModels;
     const subject = await Subject.findByPk(req.params.id);

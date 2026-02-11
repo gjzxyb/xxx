@@ -17,19 +17,17 @@ const JWT_SECRET = process.env.JWT_SECRET;
 /**
  * 项目级认证 - 在项目数据库中验证用户
  * 必须在 projectDb 中间件之后使用
+ * 安全性：仅接受Authorization header中的token
  */
 async function authenticateProject(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     let token;
 
-    // 优先从 Authorization header 获取 token
+    // 仅从 Authorization header 获取 token
+    // 安全性：不接受query参数中的token，防止token泄露
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
-    }
-    // 其次从 query 参数获取 token (用于文件下载)
-    else if (req.query.token) {
-      token = req.query.token;
     }
 
     if (!token) {

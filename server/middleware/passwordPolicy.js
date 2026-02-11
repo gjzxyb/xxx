@@ -307,38 +307,6 @@ function getPasswordPolicy() {
   };
 }
 
-/**
- * Express中间件：验证密码强度
- */
-function validatePasswordMiddleware(req, res, next) {
-  const { password, studentId, username } = req.body;
-
-  if (!password) {
-    // 如果是可选密码（如编辑学生信息），跳过验证
-    if (req.method === 'PUT') {
-      return next();
-    }
-    return res.status(400).json({
-      code: 400,
-      message: '请输入密码',
-      errors: []
-    });
-  }
-
-  const context = { studentId, username };
-  const result = validatePasswordStrength(password, context);
-
-  if (!result.valid) {
-    return res.status(400).json({
-      code: 400,
-      message: '密码不符合安全要求',
-      errors: result.errors
-    });
-  }
-
-  next();
-}
-
 module.exports = {
   validatePasswordStrength,
   validatePasswordMiddleware,

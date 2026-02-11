@@ -207,6 +207,46 @@ const adminCreateLimiter = rateLimit({
   }
 });
 
+/**
+ * 管理员通用操作速率限制
+ * 每分钟最多30次（用于GET请求等读操作）
+ */
+const adminLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: {
+    code: 429,
+    message: '管理操作过于频繁，请稍后再试'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    const ip = ipKeyGenerator(req, res);
+    const userId = req.user?.id || 'anonymous';
+    return `admin:${ip}:${userId}`;
+  }
+});
+
+/**
+ * 管理员修改操作速率限制
+ * 每分钟最多20次（用于PUT/DELETE等写操作）
+ */
+const adminModifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: {
+    code: 429,
+    message: '修改操作过于频繁，请稍后再试'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    const ip = ipKeyGenerator(req, res);
+    const userId = req.user?.id || 'anonymous';
+    return `admin-modify:${ip}:${userId}`;
+  }
+});
+
 module.exports = {
   loginLimiter,
   selectionLimiter,
@@ -217,5 +257,7 @@ module.exports = {
   verificationCodeLimiter,
   codeLoginLimiter,
   importLimiter,
-  adminCreateLimiter
+  adminCreateLimiter,
+  adminLimiter,
+  adminModifyLimiter
 };

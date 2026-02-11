@@ -46,13 +46,84 @@ function validateStringLength(value, minLength, maxLength, fieldName = '字段')
 }
 
 /**
- * 验证邮箱格式
+ * 验证邮箱格式（RFC 5322 标准）
  * @param {string} email - 邮箱地址
  * @returns {boolean}
  */
 function validateEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  if (typeof email !== 'string') {
+    return false;
+  }
+  
+  // RFC 5322 官方标准正则（简化版，覆盖 99.9% 的真实邮箱）
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  
+  if (!emailRegex.test(email)) {
+    return false;
+  }
+  
+  // 额外检查：总长度不超过 254 字符
+  if (email.length > 254) {
+    return false;
+  }
+  
+  // 检查本地部分（@ 前）不超过 64 字符
+  const localPart = email.split('@')[0];
+  if (localPart && localPart.length > 64) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * 严格验证邮箱（包含域名检查）
+ * @param {string} email - 邮箱地址
+ * @param {Array<string>} allowedDomains - 允许的域名列表（可选）
+ * @returns {Object} { valid: boolean, error: string }
+ */
+function validateEmailStrict(email, allowedDomains = []) {
+  if (typeof email !== 'string') {
+    return { valid: false, error: '邮箱必须是字符串' };
+  }
+  
+  const trimmed = email.trim();
+  
+  if (!trimmed) {
+    return { valid: false, error: '邮箱不能为空' };
+  }
+  
+  if (!validateEmail(trimmed)) {
+    return { valid: false, error: '邮箱格式不正确' };
+  }
+  
+  // 如果指定了允许的域名列表，则检查
+  if (allowedDomains.length > 0) {
+    const domain = trimmed.split('@')[1]?.toLowerCase();
+    if (!domain || !allowedDomains.some(d => domain === d.toLowerCase())) {
+      return { valid: false, error: `只允许使用以下域名的邮箱: ${allowedDomains.join(', ')}` };
+    }
+  }
+  
+  // 检查常见拼写错误
+  const commonTypos = {
+    'gmial.com': 'gmail.com',
+    'gmaill.com': 'gmail.com',
+    'gnail.com': 'gmail.com',
+    'hotmial.com': 'hotmail.com',
+    'yahooo.com': 'yahoo.com',
+    'yaho.com': 'yahoo.com'
+  };
+  
+  const domain = trimmed.split('@')[1]?.toLowerCase();
+  if (domain && commonTypos[domain]) {
+    return { 
+      valid: false, 
+      error: `邮箱域名可能有误，您是否想输入: ${trimmed.split('@')[0]}@${commonTypos[domain]}?` 
+    };
+  }
+  
+  return { valid: true, error: '' };
 }
 
 /**
@@ -133,6 +204,7 @@ module.exports = {
   validatePagination,
   validateStringLength,
   validateEmail,
+  validateEmailStrict,
   validateStudentId,
   validateRequiredFields,
   validateNumberRange,

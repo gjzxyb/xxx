@@ -15,6 +15,9 @@ const helmet = require('helmet');
 const fs = require('fs');
 const rfs = require('rotating-file-stream');
 
+// XSS 防护工具
+const { sanitizeMiddleware } = require('./utils/xss');
+
 // #11: 日志轮转配置
 const logsDir = path.join(__dirname, 'logs');
 if (!fs.existsSync(logsDir)) {
@@ -38,9 +41,11 @@ const errorLogStream = rfs.createStream('error.log', {
 });
 
 // 重定向 console.error 到文件（同时保留控制台输出）
+// 安全性：使用脱敏工具防止敏感信息泄露
+const { formatLogMessage } = require('./utils/sanitize');
 const originalConsoleError = console.error;
 console.error = (...args) => {
-  const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+  const msg = formatLogMessage(args);
   errorLogStream.write(`[${new Date().toISOString()}] ${msg}\n`);
   originalConsoleError.apply(console, args);
 };
@@ -107,15 +112,64 @@ app.use((req, res, next) => {
 
 // Helmet - 设置安全HTTP响应头
 app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+  // 内容安全策略 - 防止XSS攻击
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // 允许内联脚本（如需更严格，可移除 unsafe-inline）
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      mediaSrc: ["'self'"],
+      objectSrc: ["'none'"], // 禁止嵌入对象
+      frameSrc: ["'none'"], // 禁止iframe
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+    }
+  },
+  // 跨域嵌入策略
   crossOriginEmbedderPolicy: false,
+  // 跨域资源策略
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  // #10: 启用 Strict-Transport-Security
+  // 严格传输安全 - 强制HTTPS
   hsts: process.env.NODE_ENV === 'production' ? {
     maxAge: 31536000, // 1年
     includeSubDomains: true,
     preload: true
-  } : false
+  } : false,
+  // 防止点击劫持
+  frameguard: {
+    action: 'deny' // 禁止任何iframe嵌入
+  },
+  // 禁用MIME嗅探
+  noSniff: true,
+  // 防止IE执行下载的HTML内容
+  ieNoOpen: true,
+  // XSS过滤器
+  xssFilter: true,
+  // 引用策略
+  referrerPolicy: {
+    policy: ['strict-origin-when-cross-origin']
+  },
+  // 权限策略 - 限制浏览器功能
+  permissionsPolicy: {
+    features: {
+      camera: [], // 禁用摄像头
+      microphone: [], // 禁用麦克风
+      geolocation: [], // 禁用地理位置
+      payment: [], // 禁用支付API
+      usb: [], // 禁用USB
+      magnetometer: [],
+      gyroscope: [],
+      speaker: []
+    }
+  },
+  // DNS预获取控制
+  dnsPrefetchControl: {
+    allow: false
+  },
+  // 隐藏X-Powered-By头
+  hidePoweredBy: true
 }));
 
 // CORS配置 - 限制允许的来源，避免跨站攻击
@@ -169,6 +223,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// XSS 防护 - 消毒所有用户输入
+app.use(sanitizeMiddleware);
 
 function getObjectDepth(obj, current = 0) {
   if (current > 10) return current;

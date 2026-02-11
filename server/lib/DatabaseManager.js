@@ -11,6 +11,7 @@ class DatabaseManager {
     this.platformDb = null;
     this.projectConnections = new Map(); // projectId -> Sequelize instance
     this.projectModels = new Map(); // projectId -> models object
+    this.connectionMetadata = new Map(); // projectId -> { lastAccessed, refCount }
     
     // 连接池限制：根据环境变量配置，默认值根据环境不同
     // 开发环境：10，生产环境：50
@@ -124,7 +125,7 @@ class DatabaseManager {
   }
 
   /**
-   * 获取项目数据库连接（带缓存）
+   * 获取项目数据库连接（带缓存和引用计数）
    * @param {string} projectId - 项目ID
    * @returns {Promise<Sequelize>}
    */
@@ -135,14 +136,25 @@ class DatabaseManager {
 
     // 检查缓存
     if (this.projectConnections.has(projectId)) {
+      // 更新访问时间和引用计数
+      const metadata = this.connectionMetadata.get(projectId);
+      if (metadata) {
+        metadata.lastAccessed = Date.now();
+        metadata.refCount++;
+      }
       return this.projectConnections.get(projectId);
     }
 
     // 检查连接数限制
     if (this.projectConnections.size >= this.connectionLimit) {
-      // LRU: 移除最旧的连接
-      const oldestProjectId = this.projectConnections.keys().next().value;
-      await this.closeProjectDb(oldestProjectId);
+      // 优化的LRU: 找到最久未使用且引用计数为0的连接
+      const candidateForEviction = this.findLeastRecentlyUsed();
+      if (candidateForEviction) {
+        await this.closeProjectDb(candidateForEviction);
+      } else {
+        console.warn('⚠️  所有连接都在使用中，无法淘汰。等待连接释放...');
+        // 可以选择等待或抛出错误
+      }
     }
 
     // 创建新连接
@@ -167,12 +179,46 @@ class DatabaseManager {
     // 测试连接
     await sequelize.authenticate();
 
-    // 缓存连接
+    // 缓存连接和元数据
     this.projectConnections.set(projectId, sequelize);
+    this.connectionMetadata.set(projectId, {
+      lastAccessed: Date.now(),
+      refCount: 1
+    });
 
     console.log(`✓ 项目数据库已连接: ${projectId}`);
 
     return sequelize;
+  }
+
+  /**
+   * 找到最久未使用且引用计数为0的连接
+   * @returns {string|null} - 项目ID或null
+   */
+  findLeastRecentlyUsed() {
+    let oldestProjectId = null;
+    let oldestTime = Infinity;
+
+    for (const [projectId, metadata] of this.connectionMetadata.entries()) {
+      // 只考虑引用计数为0的连接
+      if (metadata.refCount === 0 && metadata.lastAccessed < oldestTime) {
+        oldestTime = metadata.lastAccessed;
+        oldestProjectId = projectId;
+      }
+    }
+
+    return oldestProjectId;
+  }
+
+  /**
+   * 释放连接引用
+   * @param {string} projectId - 项目ID
+   */
+  releaseConnection(projectId) {
+    const metadata = this.connectionMetadata.get(projectId);
+    if (metadata && metadata.refCount > 0) {
+      metadata.refCount--;
+    }
   }
 
   /**
@@ -270,6 +316,7 @@ class DatabaseManager {
       await sequelize.close();
       this.projectConnections.delete(projectId);
       this.projectModels.delete(projectId);
+      this.connectionMetadata.delete(projectId);
       console.log(`✓ 项目数据库连接已关闭: ${projectId}`);
     }
   }

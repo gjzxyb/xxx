@@ -26,16 +26,23 @@ const SENSITIVE_FIELDS = [
 /**
  * 脱敏日志数据
  * @param {Object} data - 要脱敏的数据对象
+ * @param {number} depth - 当前递归深度
+ * @param {number} maxDepth - 最大递归深度
  * @returns {Object} 脱敏后的数据
  */
-function sanitizeLog(data) {
+function sanitizeLog(data, depth = 0, maxDepth = 10) {
+  // 防止无限递归
+  if (depth > maxDepth) {
+    return '[MAX_DEPTH_EXCEEDED]';
+  }
+
   if (!data || typeof data !== 'object') {
     return data;
   }
 
   // 数组处理
   if (Array.isArray(data)) {
-    return data.map(item => sanitizeLog(item));
+    return data.map(item => sanitizeLog(item, depth + 1, maxDepth));
   }
 
   // 对象处理
@@ -51,13 +58,32 @@ function sanitizeLog(data) {
     if (isSensitive) {
       sanitized[key] = '***REDACTED***';
     } else if (value && typeof value === 'object') {
-      sanitized[key] = sanitizeLog(value);
+      sanitized[key] = sanitizeLog(value, depth + 1, maxDepth);
     } else {
       sanitized[key] = value;
     }
   }
   
   return sanitized;
+}
+
+/**
+ * 格式化日志参数（用于console.error重定向）
+ * @param {Array} args - 日志参数数组
+ * @returns {string} - 格式化后的消息
+ */
+function formatLogMessage(args) {
+  return args.map(a => {
+    if (typeof a === 'object' && a !== null) {
+      try {
+        const sanitized = sanitizeLog(a);
+        return JSON.stringify(sanitized);
+      } catch (e) {
+        return String(a);
+      }
+    }
+    return String(a);
+  }).join(' ');
 }
 
 /**
@@ -145,5 +171,6 @@ module.exports = {
   maskEmail,
   maskPhone,
   maskIdCard,
+  formatLogMessage,
   SENSITIVE_FIELDS
 };
