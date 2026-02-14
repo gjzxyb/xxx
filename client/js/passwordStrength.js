@@ -27,22 +27,26 @@ class PasswordStrengthIndicator {
   async loadPasswordPolicy() {
     try {
       const response = await fetch('/api/auth/password-policy');
-      const data = await response.json();
-      if (data.code === 200) {
-        this.policy = data.data;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.code === 200) {
+          this.policy = data.data;
+          return;
+        }
       }
     } catch (error) {
-      console.error('获取密码策略失败:', error);
-      // 使用默认策略
-      this.policy = {
-        minLength: 8,
-        maxLength: 32,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumber: true,
-        requireSpecial: false
-      };
+      console.warn('获取密码策略失败，使用默认策略:', error);
     }
+    
+    // 使用默认策略
+    this.policy = {
+      minLength: 8,
+      maxLength: 32,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumber: true,
+      requireSpecial: false
+    };
   }
 
   render() {

@@ -74,8 +74,8 @@
                   <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-hover); transition: 0.3s; border-radius: 26px;"></span>
                 </label>
               </div>
-              <button class="btn btn-secondary" onclick="switchTab('time')">⏰ 设置时间</button>
-              <button class="btn btn-secondary" onclick="switchTab('subjects')">📚 管理科目</button>
+<button class="btn btn-secondary" id="switchToTimeBtn">⏰ 设置时间</button>
+              <button class="btn btn-secondary" id="switchToSubjectsBtn">📚 管理科目</button>
             </div>
             <style>
               .slider:before {
@@ -263,7 +263,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title" id="modalTitle">添加科目</h3>
-        <button class="modal-close" onclick="closeSubjectModal()">&times;</button>
+        <button class="modal-close" id="subjectModalCloseBtn">&times;</button>
       </div>
       <form id="subjectForm">
         <input type="hidden" id="subjectId">
@@ -287,7 +287,7 @@
           <input type="number" id="subjectCapacity" class="form-input" value="0" min="0">
         </div>
         <div class="flex justify-between">
-          <button type="button" class="btn btn-secondary" onclick="closeSubjectModal()">取消</button>
+          <button type="button" class="btn btn-secondary" id="subjectModalCancelBtn">取消</button>
           <button type="submit" class="btn btn-success">保存</button>
         </div>
       </form>
@@ -299,18 +299,18 @@
     <div class="modal" style="max-width: 700px;">
       <div class="modal-header">
         <h3 class="modal-title">📤 导入学生</h3>
-        <button class="modal-close" onclick="closeImportModal()">&times;</button>
+        <button class="modal-close" id="importModalCloseBtn">&times;</button>
       </div>
       <div style="padding: 1rem;">
         <div class="form-group">
           <label class="form-label">选择 Excel 文件</label>
-          <input type="file" id="importFile" class="form-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+          <input type="file" id="importFile" class="form-input" accept=".xlsx,.xls">
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
             Excel 文件需包含以下列：<strong>学号</strong>（必填）、<strong>姓名</strong>（必填）、<strong>班级</strong>、<strong>密码</strong>（默认123456）
           </p>
         </div>
         <div class="flex gap-2 mb-3">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="downloadTemplate()">📥 下载模板</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadTemplateBtn">📥 下载模板</button>
         </div>
         <div id="importPreview" style="display: none;">
           <h4 style="margin-bottom: 0.5rem;">预览数据 (<span id="previewCount">0</span> 条)</h4>
@@ -330,8 +330,8 @@
         </div>
         <div id="importResult" style="display: none; margin-top: 1rem;"></div>
         <div class="flex justify-between mt-3">
-          <button type="button" class="btn btn-secondary" onclick="closeImportModal()">取消</button>
-          <button type="button" class="btn btn-success" id="submitImportBtn" onclick="submitImport()" disabled>开始导入</button>
+<button type="button" class="btn btn-secondary" id="importModalCancelBtn">取消</button>
+          <button type="button" class="btn btn-success" id="submitImportBtn" disabled>开始导入</button>
         </div>
       </div>
     </div>
@@ -342,7 +342,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title" id="studentModalTitle">添加学生</h3>
-        <button class="modal-close" onclick="closeStudentModal()">&times;</button>
+        <button class="modal-close" id="studentModalCloseBtn">&times;</button>
       </div>
       <form id="studentForm">
         <input type="hidden" id="editStudentId">
@@ -365,7 +365,7 @@
           <div id="studentPasswordStrengthContainer"></div>
         </div>
         <div class="flex justify-between">
-          <button type="button" class="btn btn-secondary" onclick="closeStudentModal()">取消</button>
+          <button type="button" class="btn btn-secondary" id="studentModalCancelBtn">取消</button>
           <button type="submit" class="btn btn-success">保存</button>
         </div>
       </form>
@@ -1644,6 +1644,34 @@
       }
     });
 
+
+    // 绑定所有事件监听器
+    const switchToTimeBtn = document.getElementById('switchToTimeBtn');
+    const switchToSubjectsBtn = document.getElementById('switchToSubjectsBtn');
+    if (switchToTimeBtn) switchToTimeBtn.addEventListener('click', () => switchTab('time'));
+    if (switchToSubjectsBtn) switchToSubjectsBtn.addEventListener('click', () => switchTab('subjects'));
+
+    const subjectModalCloseBtn = document.getElementById('subjectModalCloseBtn');
+    const subjectModalCancelBtn = document.getElementById('subjectModalCancelBtn');
+    if (subjectModalCloseBtn) subjectModalCloseBtn.addEventListener('click', closeSubjectModal);
+    if (subjectModalCancelBtn) subjectModalCancelBtn.addEventListener('click', closeSubjectModal);
+
+    const importModalCloseBtn = document.getElementById('importModalCloseBtn');
+    const importModalCancelBtn = document.getElementById('importModalCancelBtn');
+    const submitImportBtn = document.getElementById('submitImportBtn');
+    const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+    const importFile = document.getElementById('importFile');
+    
+    if (importModalCloseBtn) importModalCloseBtn.addEventListener('click', closeImportModal);
+    if (importModalCancelBtn) importModalCancelBtn.addEventListener('click', closeImportModal);
+    if (submitImportBtn) submitImportBtn.addEventListener('click', submitImport);
+    if (downloadTemplateBtn) downloadTemplateBtn.addEventListener('click', downloadTemplate);
+    if (importFile) importFile.addEventListener('change', handleFileSelect);
+
+    const studentModalCloseBtn = document.getElementById('studentModalCloseBtn');
+    const studentModalCancelBtn = document.getElementById('studentModalCancelBtn');
+    if (studentModalCloseBtn) studentModalCloseBtn.addEventListener('click', closeStudentModal);
+    if (studentModalCancelBtn) studentModalCancelBtn.addEventListener('click', closeStudentModal);
 
     // 初始化
     loadOverview();

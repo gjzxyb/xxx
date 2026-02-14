@@ -256,7 +256,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title">🔐 修改密码</h3>
-        <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
       </div>
       <form id="changePasswordForm">
         <div class="form-group">
@@ -279,7 +279,7 @@
           <input type="password" id="confirmPassword" class="form-input" required placeholder="请再次输入新密码">
         </div>
         <div class="flex justify-between">
-          <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">取消</button>
+          <button type="button" class="btn btn-secondary" id="modalCancelBtn">取消</button>
           <button type="submit" class="btn btn-primary">确认修改</button>
         </div>
       </form>
@@ -373,6 +373,12 @@
         newPasswordStrength = null;
       }
     }
+
+    // 绑定模态框关闭按钮事件
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeChangePasswordModal);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeChangePasswordModal);
 
     document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
       e.preventDefault();

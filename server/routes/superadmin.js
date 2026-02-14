@@ -144,6 +144,29 @@ router.get('/config', authenticatePlatform, requireSuperAdmin, async (req, res) 
 });
 
 /**
+ * 获取系统设置（返回数组格式，用于前端）
+ * GET /api/platform/superadmin/settings
+ */
+router.get('/settings', authenticatePlatform, requireSuperAdmin, async (req, res) => {
+  try {
+    const configs = await SystemConfig.findAll();
+    const settings = configs.map(config => ({
+      key: config.key,
+      value: config.value,
+      description: config.description
+    }));
+
+    res.json({
+      code: 200,
+      data: settings
+    });
+  } catch (error) {
+    console.error('获取设置错误:', error);
+    res.status(500).json({ code: 500, message: '获取设置失败' });
+  }
+});
+
+/**
  * 更新系统配置
  * PUT /api/platform/superadmin/config
  */

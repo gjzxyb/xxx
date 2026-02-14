@@ -166,6 +166,17 @@ a:hover {
 
 .btn-success:hover {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+  color: white;
+}
+
+.btn-warning:hover {
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
 }
 
 .btn-danger {
@@ -175,6 +186,7 @@ a:hover {
 
 .btn-danger:hover {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  transform: translateY(-1px);
 }
 
 .btn-outline {

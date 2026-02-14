@@ -116,7 +116,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // 允许内联脚本（如需更严格，可移除 unsafe-inline）
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"], // 允许 CDN 脚本
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:"],

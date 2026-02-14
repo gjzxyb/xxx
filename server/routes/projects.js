@@ -581,4 +581,70 @@ router.put('/:projectId/registration-setting', authenticatePlatform, async (req,
   }
 });
 
+/**
+ * 获取项目管理员Token（用于从平台跳转到项目管理后台）
+ * POST /api/platform/projects/:projectId/admin-token
+ */
+router.post('/:projectId/admin-token', authenticatePlatform, async (req, res) => {
+  try {
+    const project = await Project.findByPk(req.params.projectId);
+
+    if (!project) {
+      return res.status(404).json({ code: 404, message: '项目不存在' });
+    }
+
+    // 只有项目所有者可以获取管理员token
+    if (project.ownerId !== req.user.id) {
+      return res.status(403).json({ code: 403, message: '只有项目所有者可以访问管理后台' });
+    }
+
+    // 使用项目数据库
+    const dbManager = require('../lib/DatabaseManager');
+    const projectModels = await dbManager.getProjectModels(project.id);
+    const { User } = projectModels;
+
+    // 查找项目的管理员用户
+    const adminUser = await User.findOne({
+      where: { role: 'admin' }
+    });
+
+    if (!adminUser) {
+      return res.status(404).json({ 
+        code: 404, 
+        message: '该项目尚未设置管理员账号，请先在"安全设置"中配置' 
+      });
+    }
+
+    // 生成JWT token
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        id: adminUser.id, 
+        studentId: adminUser.studentId,
+        role: adminUser.role,
+        projectId: project.id
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      code: 200,
+      message: '获取管理员权限成功',
+      data: {
+        token,
+        user: {
+          id: adminUser.id,
+          name: adminUser.name,
+          role: adminUser.role,
+          studentId: adminUser.studentId
+        }
+      }
+    });
+  } catch (error) {
+    console.error('获取管理员token错误:', error);
+    res.status(500).json({ code: 500, message: '获取管理员权限失败' });
+  }
+});
+
 module.exports = router;

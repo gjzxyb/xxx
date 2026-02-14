@@ -23,10 +23,10 @@
         <li class="nav-item active">
           <span>📊</span> 我的项目
         </li>
-        <li class="nav-item" onclick="showCreateProjectModal()">
+<li class="nav-item" id="createProjectNavBtn">
           <span>➕</span> 创建项目
         </li>
-        <li class="nav-item" onclick="showAccountSettingsModal()">
+        <li class="nav-item" id="accountSettingsNavBtn">
           <span>⚙️</span> 账号设置
         </li>
       </ul>
@@ -37,7 +37,7 @@
           <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="userName">User</div>
           <div style="font-size: 0.8rem; color: var(--text-secondary);" id="userPlan">加载中...</div>
         </div>
-        <button class="btn-icon" onclick="logout()" title="退出" style="background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+<button class="btn-icon" id="logoutBtn" title="退出" style="background: none; border: none; color: var(--text-secondary); cursor: pointer;">
           ⏻
         </button>
       </div>
@@ -50,7 +50,7 @@
           <h1>我的项目</h1>
           <p>管理您的分科自选系统实例</p>
         </div>
-        <button class="btn btn-primary" onclick="showCreateProjectModal()">
+<button class="btn btn-primary" id="createProjectHeaderBtn">
           <span>+</span> 创建新项目
         </button>
       </header>
@@ -90,7 +90,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title">✨ 创建新项目</h3>
-        <button class="modal-close" onclick="closeCreateProjectModal()">&times;</button>
+        <button class="modal-close" id="createProjectModalCloseBtn">&times;</button>
       </div>
       <form id="createProjectForm">
         <div class="form-group">
@@ -102,7 +102,7 @@
           <textarea id="projectDesc" class="form-input" rows="3" placeholder="简要描述该项目的用途..."></textarea>
         </div>
         <div class="flex justify-between" style="margin-top: 2rem;">
-          <button type="button" class="btn btn-secondary" onclick="closeCreateProjectModal()">取消</button>
+          <button type="button" class="btn btn-secondary" id="createProjectModalCancelBtn">取消</button>
           <button type="submit" class="btn btn-primary">立即创建</button>
         </div>
       </form>
@@ -114,7 +114,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title">🔐 安全设置</h3>
-        <button class="modal-close" onclick="closeSecurityModal()">&times;</button>
+        <button class="modal-close" id="securityModalCloseBtn">&times;</button>
       </div>
       <form id="securityForm">
         <input type="hidden" id="securityProjectId">
@@ -134,7 +134,7 @@
           <div id="adminPasswordStrengthContainer"></div>
         </div>
         <div class="flex justify-between" style="margin-top: 2rem;">
-          <button type="button" class="btn btn-secondary" onclick="closeSecurityModal()">取消</button>
+          <button type="button" class="btn btn-secondary" id="securityModalCancelBtn">取消</button>
           <button type="submit" class="btn btn-primary">保存设置</button>
         </div>
       </form>
@@ -146,7 +146,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title">⚙️ 账号设置</h3>
-        <button class="modal-close" onclick="closeAccountSettingsModal()">&times;</button>
+        <button class="modal-close" id="accountSettingsModalCloseBtn">&times;</button>
       </div>
 
       <!-- 账号信息展示 -->
@@ -170,10 +170,10 @@
 
       <!-- 标签页切换 -->
       <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color);">
-        <button type="button" class="account-tab active" data-tab="email" onclick="switchAccountTab('email')" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">
+<button type="button" class="account-tab active" data-tab="email" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">
           修改邮箱
         </button>
-        <button type="button" class="account-tab" data-tab="password" onclick="switchAccountTab('password')" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">
+        <button type="button" class="account-tab" data-tab="password" style="flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s;">
           修改密码
         </button>
       </div>
@@ -189,7 +189,7 @@
           <input type="password" id="emailConfirmPassword" class="form-input" required placeholder="请输入当前密码以确认修改">
         </div>
         <div class="flex justify-between" style="margin-top: 2rem;">
-          <button type="button" class="btn btn-secondary" onclick="closeAccountSettingsModal()">取消</button>
+<button type="button" class="btn btn-secondary" id="changeEmailCancelBtn">取消</button>
           <button type="submit" class="btn btn-primary">保存邮箱</button>
         </div>
       </form>
@@ -211,7 +211,7 @@
           <input type="password" id="confirmNewPassword" class="form-input" required placeholder="请再次输入新密码">
         </div>
         <div class="flex justify-between" style="margin-top: 2rem;">
-          <button type="button" class="btn btn-secondary" onclick="closeAccountSettingsModal()">取消</button>
+<button type="button" class="btn btn-secondary" id="changePasswordCancelBtn">取消</button>
           <button type="submit" class="btn btn-primary">保存密码</button>
         </div>
       </form>
@@ -223,11 +223,26 @@
     <div class="modal" style="max-width: 400px;">
       <div class="modal-header">
         <h3 class="modal-title">⚠️ 确认操作</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="color: var(--text-primary); margin-bottom: 1.5rem;"></p>
+      </div>
+      <div class="flex justify-between" style="margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" id="confirmCancel">取消</button>
+        <button type="button" class="btn btn-danger" id="confirmOk">确认</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
   <script>
+    // 全局变量声明
+    let adminPasswordStrength = null;
+    let accountPasswordStrength = null;
+    let allowedEmailDomains = [];
+
     // Custom Confirm Dialog
     function showConfirm(message) {
       return new Promise((resolve) => {
@@ -310,7 +325,188 @@
                      `标准版 (${user.maxProjects}个项目)`;
     document.getElementById('userPlan').textContent = planText;
 
-    // 加载项目列表
+    // ========== 模态框函数定义（必须在 loadProjects 之前） ==========
+    
+    // 加载允许的邮箱域名配置
+    async function loadEmailDomainConfig() {
+      try {
+        const res = await fetch('/api/platform/superadmin/settings', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        
+        // 如果API不存在或无权限，静默失败
+        if (!res.ok) {
+          allowedEmailDomains = [];
+          return;
+        }
+        
+        const result = await res.json();
+        if (result.code === 200 && Array.isArray(result.data)) {
+          const domainsSetting = result.data.find(s => s.key === 'allowed_email_domains');
+          if (domainsSetting && domainsSetting.value) {
+            allowedEmailDomains = domainsSetting.value.split(',').map(d => d.trim()).filter(d => d);
+          } else {
+            allowedEmailDomains = [];
+          }
+        } else {
+          allowedEmailDomains = [];
+        }
+      } catch (err) {
+        // 静默失败，不限制邮箱域名
+        allowedEmailDomains = [];
+      }
+    }
+
+    // 验证邮箱域名
+    function validateEmailDomain(email) {
+      if (!email || !email.includes('@')) {
+        return { valid: false, message: '请输入有效的邮箱地址' };
+      }
+
+      if (allowedEmailDomains.length === 0) {
+        return { valid: true };
+      }
+
+      const emailDomain = email.split('@')[1];
+      if (!allowedEmailDomains.includes(emailDomain)) {
+        return {
+          valid: false,
+          message: `邮箱域名不在允许列表中。允许的域名：${allowedEmailDomains.join(', ')}`
+        };
+      }
+
+      return { valid: true };
+    }
+
+    // 显示安全设置弹窗
+    function showSecurityModal(projectId) {
+      console.log('[showSecurityModal] Called with projectId:', projectId);
+      document.getElementById('securityProjectId').value = projectId;
+      document.getElementById('adminUsername').value = '';
+      document.getElementById('adminPassword').value = '';
+      document.getElementById('securityModal').classList.add('active');
+
+      // 初始化密码强度指示器
+      if (adminPasswordStrength) {
+        adminPasswordStrength.destroy();
+      }
+      adminPasswordStrength = new PasswordStrengthIndicator({
+        passwordInput: document.getElementById('adminPassword'),
+        container: document.getElementById('adminPasswordStrengthContainer')
+      });
+
+      // 只有超级管理员才加载邮箱域名配置
+      if (user.isSuperAdmin) {
+        loadEmailDomainConfig();
+      } else {
+        // 普通用户不限制邮箱域名
+        allowedEmailDomains = [];
+      }
+    }
+
+    // 关闭安全设置弹窗
+    function closeSecurityModal() {
+      document.getElementById('securityModal').classList.remove('active');
+    }
+
+    // 显示创建项目弹窗
+    function showCreateProjectModal() {
+      if (parseInt(document.getElementById('projectCount').textContent) >= user.maxProjects) {
+        alert(`已达到项目数量上限（${user.maxProjects}个）`);
+        return;
+      }
+      document.getElementById('createProjectModal').classList.add('active');
+    }
+
+    // 关闭创建项目弹窗
+    function closeCreateProjectModal() {
+      document.getElementById('createProjectModal').classList.remove('active');
+    }
+
+    // 显示账号设置弹窗
+    function showAccountSettingsModal() {
+      document.getElementById('currentEmail').textContent = user.email || '-';
+      document.getElementById('currentPlan').textContent = user.plan || '免费版';
+      document.getElementById('currentQuota').textContent = `${user.maxProjects || 0} 个项目`;
+
+      document.getElementById('changeEmailForm').reset();
+      document.getElementById('changePasswordForm').reset();
+
+      switchAccountTab('email');
+      document.getElementById('accountSettingsModal').classList.add('active');
+    }
+
+    // 关闭账号设置弹窗
+    function closeAccountSettingsModal() {
+      document.getElementById('accountSettingsModal').classList.remove('active');
+      if (accountPasswordStrength) {
+        accountPasswordStrength.destroy();
+        accountPasswordStrength = null;
+      }
+    }
+
+    // 切换账号设置标签页
+    function switchAccountTab(tab) {
+      document.querySelectorAll('.account-tab').forEach(t => {
+        const isActive = t.dataset.tab === tab;
+        t.classList.toggle('active', isActive);
+        t.style.borderBottom = isActive ? '2px solid var(--primary)' : '2px solid transparent';
+        t.style.color = isActive ? 'var(--primary)' : 'var(--text-secondary)';
+      });
+
+      document.getElementById('changeEmailForm').style.display = tab === 'email' ? 'block' : 'none';
+      document.getElementById('changePasswordForm').style.display = tab === 'password' ? 'block' : 'none';
+
+      if (tab === 'password') {
+        if (accountPasswordStrength) {
+          accountPasswordStrength.destroy();
+        }
+        accountPasswordStrength = new PasswordStrengthIndicator({
+          passwordInput: document.getElementById('newPassword'),
+          confirmInput: document.getElementById('confirmNewPassword'),
+          container: document.getElementById('accountPasswordStrengthContainer')
+        });
+      } else {
+        if (accountPasswordStrength) {
+          accountPasswordStrength.destroy();
+          accountPasswordStrength = null;
+        }
+      }
+    }
+
+    // 退出登录
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    // ========== 项目操作函数 ==========
+
+    async function deleteProject(id, name) {
+      const confirmed = await confirm(`确定要删除项目"${name}"吗？此操作不可恢复！`);
+      if (!confirmed) return;
+      
+      try {
+        showToast('正在删除项目...', 'info');
+        const res = await fetch(`/api/platform/projects/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.code === 200) {
+          showToast('项目删除成功', 'success');
+          loadProjects();
+        } else {
+          showToast(result.message || '删除失败', 'error');
+        }
+      } catch (err) {
+        console.error('删除项目失败:', err);
+        showToast('删除失败，请稍后重试', 'error');
+      }
+    }
+
+    // ========== 加载项目列表 ==========
+    
     async function loadProjects() {
       try {
         const response = await fetch('/api/platform/projects', {
@@ -375,21 +571,77 @@
                   safeDOM.createElement('div', {
                     className: 'project-footer',
                     children: [
+                      // 进入管理按钮
                       safeDOM.createElement('button', {
                         className: 'btn btn-primary',
                         text: '进入管理',
                         on: {
-                          click: () => {
-                            window.location.href = `/admin.html?projectId=${p.id}`;
+                          click: async () => {
+                            try {
+                              // 获取项目管理员凭据
+                              showToast('正在进入管理后台...', 'info');
+                              const res = await fetch(`/api/platform/projects/${p.id}/admin-token`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': 'Bearer ' + token
+                                }
+                              });
+                              const result = await res.json();
+                              
+                              if (result.code === 200 && result.data.token) {
+                                // 保存项目 token 到 localStorage
+                                localStorage.setItem('token', result.data.token);
+                                localStorage.setItem('user', JSON.stringify(result.data.user));
+                                // 跳转到管理后台
+                                window.location.href = `/admin.html?projectId=${p.id}`;
+                              } else {
+                                showToast(result.message || '获取管理权限失败', 'error');
+                              }
+                            } catch (err) {
+                              console.error('进入管理后台失败:', err);
+                              showToast('进入管理后台失败，请稍后重试', 'error');
+                            }
                           }
                         }
                       }),
+                      // 启动/停止按钮（根据状态显示）
+                      p.status === 'running' 
+                        ? safeDOM.createElement('button', {
+                            className: 'btn btn-warning',
+                            text: '⏸ 停止',
+                            on: {
+                              click: () => {
+                                stopProject(p.id);
+                              }
+                            }
+                          })
+                        : safeDOM.createElement('button', {
+                            className: 'btn btn-success',
+                            text: '▶ 启动',
+                            on: {
+                              click: () => {
+                                startProject(p.id);
+                              }
+                            }
+                          }),
+                      // 安全设置按钮
                       safeDOM.createElement('button', {
                         className: 'btn btn-secondary',
-                        text: '设置',
+                        text: '🔐 设置',
                         on: {
                           click: () => {
-                            window.location.href = `/platform/project-settings.html?id=${p.id}`;
+                            showSecurityModal(p.id);
+                          }
+                        }
+                      }),
+                      // 删除按钮
+                      safeDOM.createElement('button', {
+                        className: 'btn btn-danger',
+                        text: '🗑 删除',
+                        on: {
+                          click: () => {
+                            deleteProject(p.id, p.name);
                           }
                         }
                       })
@@ -400,130 +652,57 @@
               projectList.appendChild(card);
             });
           }
-
-          document.getElementById('projectList').innerHTML = allProjects.map(p => `
-            <div class="project-card">
-              <div class="project-header">
-                <div class="project-icon">🏫</div>
-                <div class="project-status status-${p.status || 'stopped'}">
-                  <div class="status-dot"></div>
-                  ${getStatusText(p.status)}
-                </div>
-              </div>
-
-              <div class="project-name">${p.name}
-                ${p.type === 'collab' ? `<span class="badge badge-info" style="font-size: 0.7rem; margin-left: 0.5rem;">${getRoleName(p.role)}</span>` : ''}
-              </div>
-              <div class="project-desc">${p.description || '暂无描述'}</div>
-
-              <div class="project-meta">
-                <span>Created ${new Date(p.createdAt).toLocaleDateString()}</span>
-              </div>
-
-              <div class="project-actions">
-                ${getProjectActions(p)}
-              </div>
-            </div>
-          `).join('');
         }
       } catch (error) {
         console.error('加载项目列表失败:', error);
       }
     }
 
-    function getRoleName(role) {
-      return { owner: '所有者', admin: '管理员', collaborator: '协作者' }[role] || role;
-    }
-
-    function getStatusText(status) {
-      const map = {
-        running: '运行中',
-        stopped: '已停止',
-        starting: '启动中',
-        error: '错误'
-      };
-      return map[status] || '未知';
-    }
-
-    function getProjectActions(p) {
-      const securityBtn = p.type === 'owned' ? `<button class="action-btn" onclick="showSecurityModal('${p.id}')" style="background: var(--bg-hover);">🔐 设置</button>` : '';
-
-      if (p.status === 'running') {
-        // 运行中：显示"进入系统"按钮，跳转到项目登录页面
-        return `
-          <button class="action-btn btn-access" onclick="window.open('/?projectId=${p.id}', '_blank')">进入系统</button>
-          <button class="action-btn btn-stop" onclick="stopProject('${p.id}')">禁用</button>
-          ${securityBtn}
-        `;
-      } else if (p.status === 'starting') {
-        return '<button class="action-btn btn-stop" disabled>启动中...</button>';
-      } else {
-        // 停止状态：显示"启用"和"删除"按钮
-        return `
-          <button class="action-btn btn-start" onclick="startProject('${p.id}')">启用</button>
-          ${securityBtn}
-          <button class="action-btn btn-stop" onclick="deleteProject('${p.id}', '${p.name}')">删除</button>
-        `;
-      }
-    }
-
     async function startProject(id) {
-      const btn = event.target;
-      const originalText = btn.textContent;
-      btn.textContent = '启动中...';
-      btn.disabled = true;
-
       try {
+        showToast('正在启动项目...', 'info');
         const res = await fetch(`/api/platform/projects/${id}/start`, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token }
         });
         const result = await res.json();
         if (result.code === 200) {
-          // 乐观更新
+          showToast('项目启动成功！', 'success');
           loadProjects();
         } else {
-          alert(result.message || '启动失败');
-          btn.textContent = originalText;
-          btn.disabled = false;
+          showToast(result.message || '启动失败', 'error');
         }
       } catch (err) {
-        alert('启动失败');
-        btn.textContent = originalText;
-        btn.disabled = false;
+        console.error('启动项目失败:', err);
+        showToast('启动失败，请稍后重试', 'error');
       }
     }
 
     async function stopProject(id) {
-      if (!confirm('确定要停止该项目吗？')) return;
+      const confirmed = await confirm('确定要停止该项目吗？停止后学生将无法访问系统。');
+      if (!confirmed) return;
+      
       try {
+        showToast('正在停止项目...', 'info');
         const res = await fetch(`/api/platform/projects/${id}/stop`, {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token }
         });
         const result = await res.json();
         if (result.code === 200) {
+          showToast('项目已停止', 'success');
           loadProjects();
         } else {
-          alert(result.message);
+          showToast(result.message || '停止失败', 'error');
         }
       } catch (err) {
-        alert('停止失败');
+        console.error('停止项目失败:', err);
+        showToast('停止失败，请稍后重试', 'error');
       }
     }
 
-    function showCreateProjectModal() {
-      if (parseInt(document.getElementById('projectCount').textContent) >= user.maxProjects) {
-        alert(`已达到项目数量上限（${user.maxProjects}个）`);
-        return;
-      }
-      document.getElementById('createProjectModal').classList.add('active');
-    }
-
-    function closeCreateProjectModal() {
-      document.getElementById('createProjectModal').classList.remove('active');
-    }
-
+    // ========== 表单提交处理 ==========
+    
     document.getElementById('createProjectForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
@@ -549,99 +728,6 @@
         alert('创建失败');
       }
     });
-
-    async function deleteProject(id, name) {
-      if (!confirm(`确定要删除项目"${name}"吗？此操作不可恢复！`)) return;
-      try {
-        const res = await fetch(`/api/platform/projects/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const result = await res.json();
-        if (result.code === 200) {
-          loadProjects();
-        } else {
-          alert(result.message);
-        }
-      } catch (err) {
-        alert('删除失败');
-      }
-    }
-
-    function logout() {
-      localStorage.clear();
-      window.location.href = 'login.html';
-    }
-
-    // 安全设置弹窗
-    let adminPasswordStrength = null;
-    let allowedEmailDomains = [];
-
-    // 加载允许的邮箱域名配置
-    async function loadEmailDomainConfig() {
-      try {
-        const res = await fetch('/api/platform/superadmin/settings', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const result = await res.json();
-        if (result.code === 200) {
-          const domainsSetting = result.data.find(s => s.key === 'allowed_email_domains');
-          if (domainsSetting && domainsSetting.value) {
-            allowedEmailDomains = domainsSetting.value.split(',').map(d => d.trim()).filter(d => d);
-          } else {
-            allowedEmailDomains = []; // 空表示不限制
-          }
-        }
-      } catch (err) {
-        console.warn('获取邮箱域名配置失败，将不限制邮箱域名', err);
-        allowedEmailDomains = [];
-      }
-    }
-
-    // 验证邮箱域名
-    function validateEmailDomain(email) {
-      if (!email || !email.includes('@')) {
-        return { valid: false, message: '请输入有效的邮箱地址' };
-      }
-
-      // 如果没有设置域名限制，则不验证
-      if (allowedEmailDomains.length === 0) {
-        return { valid: true };
-      }
-
-      const emailDomain = email.split('@')[1];
-      if (!allowedEmailDomains.includes(emailDomain)) {
-        return {
-          valid: false,
-          message: `邮箱域名不在允许列表中。允许的域名：${allowedEmailDomains.join(', ')}`
-        };
-      }
-
-      return { valid: true };
-    }
-
-    function showSecurityModal(projectId) {
-      document.getElementById('securityProjectId').value = projectId;
-      document.getElementById('adminUsername').value = '';
-      document.getElementById('adminPassword').value = '';
-      document.getElementById('securityModal').classList.add('active');
-
-      // 初始化密码强度指示器
-      if (adminPasswordStrength) {
-        adminPasswordStrength.destroy();
-      }
-      adminPasswordStrength = new PasswordStrengthIndicator({
-        passwordInput: document.getElementById('adminPassword'),
-        container: document.getElementById('adminPasswordStrengthContainer')
-      });
-
-      // 加载邮箱域名配置
-      loadEmailDomainConfig();
-    }
-
-    function closeSecurityModal() {
-      document.getElementById('securityModal').classList.remove('active');
-    }
 
     document.getElementById('securityForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -701,65 +787,6 @@
         showToast('设置失败，请稍后重试: ' + err.message, 'error');
       }
     });
-
-    // 账号设置功能
-    let accountPasswordStrength = null;
-
-    function showAccountSettingsModal() {
-      // 加载当前用户信息并显示
-      document.getElementById('currentEmail').textContent = user.email || '-';
-      document.getElementById('currentPlan').textContent = user.plan || '免费版';
-      document.getElementById('currentQuota').textContent = `${user.maxProjects || 0} 个项目`;
-
-      // 重置表单
-      document.getElementById('changeEmailForm').reset();
-      document.getElementById('changePasswordForm').reset();
-
-      // 切换到邮箱标签页
-      switchAccountTab('email');
-
-      // 显示弹窗
-      document.getElementById('accountSettingsModal').classList.add('active');
-    }
-
-    function closeAccountSettingsModal() {
-      document.getElementById('accountSettingsModal').classList.remove('active');
-      if (accountPasswordStrength) {
-        accountPasswordStrength.destroy();
-        accountPasswordStrength = null;
-      }
-    }
-
-    function switchAccountTab(tab) {
-      // 切换标签页激活状态
-      document.querySelectorAll('.account-tab').forEach(t => {
-        const isActive = t.dataset.tab === tab;
-        t.classList.toggle('active', isActive);
-        t.style.borderBottom = isActive ? '2px solid var(--primary)' : '2px solid transparent';
-        t.style.color = isActive ? 'var(--primary)' : 'var(--text-secondary)';
-      });
-
-      // 切换表单显示
-      document.getElementById('changeEmailForm').style.display = tab === 'email' ? 'block' : 'none';
-      document.getElementById('changePasswordForm').style.display = tab === 'password' ? 'block' : 'none';
-
-      // 初始化或销毁密码强度指示器
-      if (tab === 'password') {
-        if (accountPasswordStrength) {
-          accountPasswordStrength.destroy();
-        }
-        accountPasswordStrength = new PasswordStrengthIndicator({
-          passwordInput: document.getElementById('newPassword'),
-          confirmInput: document.getElementById('confirmNewPassword'),
-          container: document.getElementById('accountPasswordStrengthContainer')
-        });
-      } else {
-        if (accountPasswordStrength) {
-          accountPasswordStrength.destroy();
-          accountPasswordStrength = null;
-        }
-      }
-    }
 
     // 修改邮箱表单提交
     document.getElementById('changeEmailForm').addEventListener('submit', async (e) => {
@@ -844,6 +871,40 @@
         console.error('修改密码失败:', err);
         showToast('修改失败，请稍后重试', 'error');
       }
+    });
+
+    // 绑定所有事件监听器
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+    const createProjectNavBtn = document.getElementById('createProjectNavBtn');
+    const createProjectHeaderBtn = document.getElementById('createProjectHeaderBtn');
+    if (createProjectNavBtn) createProjectNavBtn.addEventListener('click', showCreateProjectModal);
+    if (createProjectHeaderBtn) createProjectHeaderBtn.addEventListener('click', showCreateProjectModal);
+
+    const accountSettingsNavBtn = document.getElementById('accountSettingsNavBtn');
+    if (accountSettingsNavBtn) accountSettingsNavBtn.addEventListener('click', showAccountSettingsModal);
+
+    const createProjectModalCloseBtn = document.getElementById('createProjectModalCloseBtn');
+    const createProjectModalCancelBtn = document.getElementById('createProjectModalCancelBtn');
+    if (createProjectModalCloseBtn) createProjectModalCloseBtn.addEventListener('click', closeCreateProjectModal);
+    if (createProjectModalCancelBtn) createProjectModalCancelBtn.addEventListener('click', closeCreateProjectModal);
+
+    const securityModalCloseBtn = document.getElementById('securityModalCloseBtn');
+    const securityModalCancelBtn = document.getElementById('securityModalCancelBtn');
+    if (securityModalCloseBtn) securityModalCloseBtn.addEventListener('click', closeSecurityModal);
+    if (securityModalCancelBtn) securityModalCancelBtn.addEventListener('click', closeSecurityModal);
+
+    const accountSettingsModalCloseBtn = document.getElementById('accountSettingsModalCloseBtn');
+    const changeEmailCancelBtn = document.getElementById('changeEmailCancelBtn');
+    const changePasswordCancelBtn = document.getElementById('changePasswordCancelBtn');
+    if (accountSettingsModalCloseBtn) accountSettingsModalCloseBtn.addEventListener('click', closeAccountSettingsModal);
+    if (changeEmailCancelBtn) changeEmailCancelBtn.addEventListener('click', closeAccountSettingsModal);
+    if (changePasswordCancelBtn) changePasswordCancelBtn.addEventListener('click', closeAccountSettingsModal);
+
+    // 绑定账号设置标签页切换
+    document.querySelectorAll('.account-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchAccountTab(tab.dataset.tab));
     });
 
     // Auto refresh status every 30 seconds

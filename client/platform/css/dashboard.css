@@ -455,6 +455,46 @@ body::before {
   color: var(--text-muted);
 }
 
+.project-body {
+  flex: 1;
+  margin-bottom: 1rem;
+}
+
+.project-stats {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.project-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.project-footer .btn {
+  flex: 1 1 calc(50% - 0.25rem);
+  min-width: 100px;
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.project-footer .btn:hover {
+  transform: translateY(-2px);
+}
+
 .project-actions {
   display: flex;
   gap: 0.5rem;

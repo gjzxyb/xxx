@@ -398,7 +398,7 @@
           <div class="captcha-group">
             <span class="captcha-question" id="captchaQuestion">加载中...</span>
             <input type="text" id="captchaAnswer" class="form-input" placeholder="答案">
-            <button type="button" class="captcha-refresh" onclick="loadCaptcha()" title="刷新验证码">🔄</button>
+            <button type="button" class="captcha-refresh" id="captchaRefreshBtn" title="刷新验证码">🔄</button>
           </div>
         </div>
         <input type="hidden" id="captchaId">
@@ -535,6 +535,10 @@
         }
       }
     });
+
+    // 绑定验证码刷新按钮
+    const captchaRefreshBtn = document.getElementById('captchaRefreshBtn');
+    if (captchaRefreshBtn) captchaRefreshBtn.addEventListener('click', loadCaptcha);
 
     checkRegistrationStatus();
   </script>

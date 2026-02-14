@@ -231,7 +231,7 @@
         <div class="navbar-nav">
           <div class="nav-user">
             <span id="userName"></span>
-            <button class="btn btn-sm btn-secondary" onclick="logout()">退出登录</button>
+            <button class="btn btn-sm btn-secondary" id="logoutBtn">退出登录</button>
           </div>
         </div>
       </div>
@@ -262,7 +262,7 @@
         <div class="card">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
             <h3 class="card-title">用户管理</h3>
-            <button class="btn btn-primary" onclick="showAddAdminModal()">➕ 添加管理员</button>
+            <button class="btn btn-primary" id="addAdminBtn">➕ 添加管理员</button>
           </div>
           <div class="table-wrapper">
             <table>
@@ -296,7 +296,7 @@
               <small>关闭后新用户将无法注册</small>
             </div>
             <label class="switch">
-              <input type="checkbox" id="registrationOpen" onchange="updateConfig('registration_open', this.checked)">
+              <input type="checkbox" id="registrationOpen">
               <span class="slider"></span>
             </label>
           </div>
@@ -306,7 +306,7 @@
               <small>开启后注册时需要输入数学验证码</small>
             </div>
             <label class="switch">
-              <input type="checkbox" id="captchaEnabled" onchange="updateConfig('captcha_enabled', this.checked)">
+              <input type="checkbox" id="captchaEnabled">
               <span class="slider"></span>
             </label>
           </div>
@@ -360,7 +360,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3 class="modal-title">编辑用户</h3>
-        <button class="modal-close" onclick="closeEditUserModal()">&times;</button>
+        <button class="modal-close" id="editModalCloseBtn">&times;</button>
       </div>
       <form id="editUserForm">
         <input type="hidden" id="editUserId">
@@ -383,7 +383,7 @@
           <div id="editPasswordStrengthContainer"></div>
         </div>
         <div class="flex justify-between">
-          <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">取消</button>
+          <button type="button" class="btn btn-secondary" id="editModalCancelBtn">取消</button>
           <button type="submit" class="btn btn-success">保存</button>
         </div>
       </form>
@@ -395,7 +395,7 @@
     <div class="modal modal-wide">
       <div class="modal-header">
         <h3 class="modal-title">确认删除用户</h3>
-        <button class="modal-close" onclick="closeDeleteUserModal()">&times;</button>
+        <button class="modal-close" id="deleteModalCloseBtn">&times;</button>
       </div>
       <div class="confirm-delete-info">
         <p>⚠️ 此操作不可恢复！</p>
@@ -406,8 +406,8 @@
         </ul>
       </div>
       <div class="flex justify-between">
-        <button class="btn btn-secondary" onclick="closeDeleteUserModal()">取消</button>
-        <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteUser()">确认删除</button>
+<button class="btn btn-secondary" id="deleteModalCancelBtn">取消</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
       </div>
     </div>
   </div>
@@ -871,21 +871,38 @@
         const result = await response.json();
 
         if (result.code === 200) {
-          const projectsHtml = result.data.map(p => `
-            <tr>
+          const tbody = document.getElementById('projectsTable');
+          tbody.innerHTML = '';
+          
+          if (result.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">暂无项目</td></tr>';
+            return;
+          }
+          
+          result.data.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
               <td>${p.name}</td>
               <td>${p.ownerEmail || '-'}</td>
               <td>${p.status === 'running' ? '<span class="status-badge status-enabled">运行中</span>' : '<span class="status-badge status-disabled">已停止</span>'}</td>
               <td>
                 <label class="switch">
-                  <input type="checkbox" ${p.registrationEnabled ? 'checked' : ''} onchange="toggleProjectRegistration('${p.id}', this.checked)">
+                  <input type="checkbox" ${p.registrationEnabled ? 'checked' : ''} data-project-id="${p.id}">
                   <span class="slider"></span>
                 </label>
               </td>
-            </tr>
-          `).join('');
-
-          document.getElementById('projectsTable').innerHTML = projectsHtml || '<tr><td colspan="4" class="text-center">暂无项目</td></tr>';
+            `;
+            
+            // 绑定事件监听器
+            const checkbox = tr.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+              checkbox.addEventListener('change', function() {
+                toggleProjectRegistration(this.dataset.projectId, this.checked);
+              });
+            }
+            
+            tbody.appendChild(tr);
+          });
         }
       } catch (error) {
         console.error('加载项目列表失败:', error);
@@ -959,7 +976,7 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeAddAdminModal()">取消</button>
+            <button type="button" class="btn btn-secondary" id="addAdminModalCancelBtn">取消</button>
             <button type="submit" class="btn btn-primary">创建管理员</button>
           </div>
         </form>
@@ -968,6 +985,43 @@
   </div>
 
   <script>
+    // 绑定所有事件监听器
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+    const addAdminBtn = document.getElementById('addAdminBtn');
+    if (addAdminBtn) addAdminBtn.addEventListener('click', showAddAdminModal);
+
+    const addAdminModalCancelBtn = document.getElementById('addAdminModalCancelBtn');
+    if (addAdminModalCancelBtn) addAdminModalCancelBtn.addEventListener('click', closeAddAdminModal);
+
+    const editModalCloseBtn = document.getElementById('editModalCloseBtn');
+    const editModalCancelBtn = document.getElementById('editModalCancelBtn');
+    if (editModalCloseBtn) editModalCloseBtn.addEventListener('click', closeEditUserModal);
+    if (editModalCancelBtn) editModalCancelBtn.addEventListener('click', closeEditUserModal);
+
+    const deleteModalCloseBtn = document.getElementById('deleteModalCloseBtn');
+    const deleteModalCancelBtn = document.getElementById('deleteModalCancelBtn');
+    if (deleteModalCloseBtn) deleteModalCloseBtn.addEventListener('click', closeDeleteUserModal);
+    if (deleteModalCancelBtn) deleteModalCancelBtn.addEventListener('click', closeDeleteUserModal);
+
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', confirmDeleteUser);
+
+    // 绑定配置开关事件
+    const registrationOpen = document.getElementById('registrationOpen');
+    const captchaEnabled = document.getElementById('captchaEnabled');
+    if (registrationOpen) {
+      registrationOpen.addEventListener('change', function() {
+        updateConfig('registration_open', this.checked);
+      });
+    }
+    if (captchaEnabled) {
+      captchaEnabled.addEventListener('change', function() {
+        updateConfig('captcha_enabled', this.checked);
+      });
+    }
+
     // 添加管理员相关函数
     function showAddAdminModal() {
       document.getElementById('addAdminModal').style.display = 'flex';
