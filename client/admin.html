@@ -165,12 +165,13 @@
                     <th>学号</th>
                     <th>姓名</th>
                     <th>班级</th>
+                    <th>邮箱</th>
                     <th>状态</th>
                     <th style="width: 180px;">操作</th>
                   </tr>
                 </thead>
                 <tbody id="studentsTable">
-                  <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                  <tr><td colspan="6" class="text-center">加载中...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -752,6 +753,7 @@
               safeDOM.createElement('td', { text: s.studentId }),
               safeDOM.createElement('td', { text: s.name }),
               safeDOM.createElement('td', { text: s.className || '-' }),
+              safeDOM.createElement('td', { text: s.email || '-' }),
               safeDOM.createElement('td', {
                 children: [safeDOM.createElement('span', {
                   className: hasSelection ? 'badge badge-success' : 'badge badge-warning',

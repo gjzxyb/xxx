@@ -456,11 +456,12 @@ router.post('/students/:id/reset-password', authenticateProject, requireProjectA
       password: newPassword
     });
 
-    // 安全性：不返回明文密码
+    // 返回新密码给管理员，由管理员通知学生
     // TODO: 实现邮件通知功能，将新密码发送到学生邮箱
     success(res, {
       studentId: student.studentId,
-      message: '密码已重置，请通过安全渠道告知学生新密码'
+      newPassword: newPassword,
+      message: '密码已重置，请将新密码告知学生'
     }, '密码已重置成功');
   } catch (err) {
     console.error('重置密码失败:', err);
