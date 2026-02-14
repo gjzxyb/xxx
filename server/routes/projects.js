@@ -517,24 +517,45 @@ router.put('/:projectId/admin-credentials', authenticatePlatform, async (req, re
 
     // 使用项目数据库
     const dbManager = require('../lib/DatabaseManager');
+    
+    // 确保项目数据库已初始化
+    try {
+      if (!dbManager.projectDbExists(project.id)) {
+        console.log(`项目数据库不存在，正在初始化: ${project.id}`);
+        await dbManager.initProjectDb(project.id);
+      }
+    } catch (initError) {
+      console.error('初始化项目数据库失败:', initError);
+      return res.status(500).json({ 
+        code: 500, 
+        message: '项目数据库初始化失败，请联系管理员' 
+      });
+    }
+    
     const projectModels = await dbManager.getProjectModels(project.id);
     const { User } = projectModels;
 
-    // 先删除该项目的所有旧admin用户
-    await User.destroy({
-      where: {
-        role: 'admin'
-      }
+    // 查找现有的管理员用户
+    let adminUser = await User.findOne({
+      where: { role: 'admin' }
     });
 
-    // 创建新admin用户（在项目数据库中）
-    // 注意：密码会通过User模型的beforeCreate钩子自动哈希
-    await User.create({
-      studentId: username,
-      password: password,
-      name: '管理员',
-      role: 'admin'
-    });
+    if (adminUser) {
+      // 更新现有管理员用户的凭据
+      await adminUser.update({
+        studentId: username,
+        password: password,
+        name: '管理员'
+      });
+    } else {
+      // 创建新的管理员用户
+      adminUser = await User.create({
+        studentId: username,
+        password: password,
+        name: '管理员',
+        role: 'admin'
+      });
+    }
 
     res.json({
       code: 200,
@@ -545,7 +566,7 @@ router.put('/:projectId/admin-credentials', authenticatePlatform, async (req, re
     });
   } catch (error) {
     console.error('设置管理员凭据错误:', error);
-    res.status(500).json({ code: 500, message: '设置管理员凭据失败' });
+    res.status(500).json({ code: 500, message: '设置管理员凭据失败: ' + error.message });
   }
 });
 

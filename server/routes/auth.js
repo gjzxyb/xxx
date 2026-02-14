@@ -22,11 +22,16 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { studentId, password, projectId } = req.body;
 
-    if (!studentId || !password) {
-      return error(res, '请输入学号和密码');
+    // 输入验证
+    if (!studentId || typeof studentId !== 'string' || studentId.trim().length === 0) {
+      return error(res, '请输入有效的学号', 400);
     }
 
-    if (!projectId) {
+    if (!password || typeof password !== 'string' || password.length === 0) {
+      return error(res, '请输入密码', 400);
+    }
+
+    if (!projectId || typeof projectId !== 'string') {
       return error(res, '缺少项目信息', 400);
     }
 
@@ -44,6 +49,14 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     // 使用项目数据库查询用户
     const dbManager = require('../lib/DatabaseManager');
 
+    // 验证项目ID格式
+    try {
+      dbManager.validateProjectId(projectId);
+    } catch (validationError) {
+      console.error('项目ID验证失败:', validationError.message);
+      return error(res, '无效的项目ID', 400);
+    }
+
     if (!dbManager.projectDbExists(projectId)) {
       return error(res, '项目不存在', 404);
     }
@@ -51,7 +64,7 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     const projectModels = await dbManager.getProjectModels(projectId);
     const { User } = projectModels;
 
-    const user = await User.findOne({ where: { studentId } });
+    const user = await User.findOne({ where: { studentId: studentId.trim() } });
     if (!user) {
       // 安全性：记录失败尝试
       const result = await loginAttemptTracker.recordFailure(lockIdentifier);
@@ -107,16 +120,43 @@ router.post('/register', registerLimiter, validatePasswordMiddleware, async (req
 
     const { studentId, name, password, className, phone, projectId } = req.body;
 
-    if (!studentId || !name || !password) {
-      return error(res, '请填写必要信息（学号、姓名、密码）');
+    // 输入验证
+    if (!studentId || typeof studentId !== 'string' || studentId.trim().length === 0) {
+      return error(res, '请输入有效的学号', 400);
     }
 
-    if (!projectId) {
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return error(res, '请输入姓名', 400);
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return error(res, '密码长度至少8个字符', 400);
+    }
+
+    if (!projectId || typeof projectId !== 'string') {
       return error(res, '缺少项目信息', 400);
+    }
+
+    // 验证学号长度
+    if (studentId.trim().length > 20) {
+      return error(res, '学号长度不能超过20个字符', 400);
+    }
+
+    // 验证姓名长度
+    if (name.trim().length > 50) {
+      return error(res, '姓名长度不能超过50个字符', 400);
     }
 
     // 使用项目数据库查询和创建用户
     const dbManager = require('../lib/DatabaseManager');
+
+    // 验证项目ID格式
+    try {
+      dbManager.validateProjectId(projectId);
+    } catch (validationError) {
+      console.error('项目ID验证失败:', validationError.message);
+      return error(res, '无效的项目ID', 400);
+    }
 
     if (!dbManager.projectDbExists(projectId)) {
       return error(res, '项目不存在', 404);
@@ -126,17 +166,17 @@ router.post('/register', registerLimiter, validatePasswordMiddleware, async (req
     const { User: ProjectUser } = projectModels;
 
     // 检查学号是否已存在（在项目数据库中）
-    const existing = await ProjectUser.findOne({ where: { studentId } });
+    const existing = await ProjectUser.findOne({ where: { studentId: studentId.trim() } });
     if (existing) {
       return error(res, '该学号已被注册');
     }
 
     const user = await ProjectUser.create({
-      studentId,
-      name,
+      studentId: studentId.trim(),
+      name: name.trim(),
       password,
-      className,
-      phone,
+      className: className ? className.trim() : null,
+      phone: phone ? phone.trim() : null,
       role: 'student'
     });
 

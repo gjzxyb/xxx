@@ -142,15 +142,22 @@ router.post('/', selectionLimiter, projectDb, authenticateProject, validateSelec
 
     const { physicsOrHistory, electiveOne, electiveTwo } = req.body;
 
-    // 验证选科
-    if (!physicsOrHistory) {
-      return error(res, '请选择物理或历史');
+    // 输入验证 - 确保是有效的数字ID
+    if (!physicsOrHistory || !Number.isInteger(Number(physicsOrHistory))) {
+      return error(res, '请选择有效的物理或历史科目', 400);
     }
-    if (!electiveOne || !electiveTwo) {
-      return error(res, '请在化学、生物、政治、地理中选择两科');
+    if (!electiveOne || !Number.isInteger(Number(electiveOne)) || 
+        !electiveTwo || !Number.isInteger(Number(electiveTwo))) {
+      return error(res, '请在化学、生物、政治、地理中选择两科', 400);
     }
-    if (electiveOne === electiveTwo) {
-      return error(res, '四选二不能选择相同科目');
+    if (Number(electiveOne) === Number(electiveTwo)) {
+      return error(res, '四选二不能选择相同科目', 400);
+    }
+    
+    // 防止选择相同的物理/历史和四选二科目
+    if (Number(physicsOrHistory) === Number(electiveOne) || 
+        Number(physicsOrHistory) === Number(electiveTwo)) {
+      return error(res, '不能重复选择相同科目', 400);
     }
 
     // 验证科目存在性和分类

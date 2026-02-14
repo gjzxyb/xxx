@@ -34,28 +34,16 @@ const REQUIRED_ENV_VARS = [
     errorMsg: 'JWT_SECRET必须至少32个字符'
   },
   {
-    name: 'DB_HOST',
-    description: '数据库主机地址',
-    validator: (value) => value && value.length > 0,
-    errorMsg: 'DB_HOST不能为空'
+    name: 'PLATFORM_JWT_SECRET',
+    description: '平台JWT密钥，用于平台级认证',
+    validator: (value) => value && value.length >= 32,
+    errorMsg: 'PLATFORM_JWT_SECRET必须至少32个字符'
   },
   {
-    name: 'DB_USER',
-    description: '数据库用户名',
-    validator: (value) => value && value.length > 0,
-    errorMsg: 'DB_USER不能为空'
-  },
-  {
-    name: 'DB_PASSWORD',
-    description: '数据库密码',
-    validator: (value) => value !== undefined, // 允许空密码，但必须存在
-    errorMsg: 'DB_PASSWORD必须设置（可以为空字符串）'
-  },
-  {
-    name: 'DB_NAME',
-    description: '数据库名称',
-    validator: (value) => value && value.length > 0,
-    errorMsg: 'DB_NAME不能为空'
+    name: 'CSRF_SECRET',
+    description: 'CSRF保护密钥',
+    validator: (value) => value && value.length >= 32,
+    errorMsg: 'CSRF_SECRET必须至少32个字符'
   }
 ];
 
@@ -95,11 +83,41 @@ const RECOMMENDED_ENV_VARS = [
     warningMsg: 'RATE_LIMIT_MAX必须是正整数'
   },
   {
-    name: 'RATE_LIMIT_WINDOW_MS',
-    description: '速率限制时间窗口（毫秒）',
-    default: '900000',
-    validator: (value) => !isNaN(parseInt(value)) && parseInt(value) > 0,
-    warningMsg: 'RATE_LIMIT_WINDOW_MS必须是正整数'
+    name: 'ALLOWED_ORIGINS',
+    description: 'CORS允许的来源',
+    default: 'http://localhost:3000',
+    warningMsg: '生产环境应明确设置允许的域名'
+  },
+  {
+    name: 'ADMIN_EMAIL',
+    description: '超级管理员邮箱',
+    default: 'admin@platform.com'
+  },
+  {
+    name: 'ADMIN_PASSWORD',
+    description: '超级管理员密码',
+    validator: (value) => !value || value.length >= 8,
+    warningMsg: '管理员密码应至少8个字符'
+  },
+  {
+    name: 'DB_HOST',
+    description: '数据库主机',
+    default: 'localhost'
+  },
+  {
+    name: 'DB_USER',
+    description: '数据库用户',
+    default: 'root'
+  },
+  {
+    name: 'DB_PASSWORD',
+    description: '数据库密码',
+    default: ''
+  },
+  {
+    name: 'DB_NAME',
+    description: '数据库名称',
+    default: 'selection_system'
   }
 ];
 
@@ -197,6 +215,27 @@ function validateProductionEnv() {
   const dangerousDefaults = ['secret', 'password', '123456', 'admin'];
   if (dangerousDefaults.some(d => jwtSecret.toLowerCase().includes(d))) {
     console.log(red('  ✗ JWT_SECRET 包含常见弱密钥，请使用强随机密钥'));
+    hasErrors = true;
+  }
+
+  // CSRF_SECRET 必须设置
+  const csrfSecret = process.env.CSRF_SECRET;
+  if (!csrfSecret || csrfSecret.length < 32) {
+    console.log(red('  ✗ 生产环境 CSRF_SECRET 必须设置且至少32个字符'));
+    hasErrors = true;
+  }
+
+  // ALLOWED_ORIGINS 必须明确设置
+  const allowedOrigins = process.env.ALLOWED_ORIGINS;
+  if (!allowedOrigins || allowedOrigins.includes('*')) {
+    console.log(red('  ✗ 生产环境 ALLOWED_ORIGINS 必须明确设置，不能使用通配符'));
+    hasErrors = true;
+  }
+
+  // 管理员密码必须强壮
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminPassword && adminPassword.length < 12) {
+    console.log(red('  ✗ 生产环境管理员密码应至少12个字符'));
     hasErrors = true;
   }
 

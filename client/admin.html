@@ -926,22 +926,24 @@
     }
 
     async function deleteStudent(id, name) {
-      if (!confirm(`确定要删除学生 "${name}" 吗？删除后该学生的选科记录也将被删除。`)) {
+      const confirmed = await confirm(`确定要删除学生 "${name}" 吗？删除后该学生的选科记录也将被删除。`);
+      if (!confirmed) {
         return;
       }
 
       try {
+        showToast('正在删除学生...', 'info');
         const result = await api.admin.deleteStudent(id);
 
         if (result.code === 200) {
-          alert('学生删除成功');
+          showToast('学生删除成功', 'success');
           loadStudents(currentPage);
         } else {
-          alert(result.message || '删除失败');
+          showToast(result.message || '删除失败', 'error');
         }
       } catch (err) {
         console.error('删除学生错误:', err);
-        alert('删除失败');
+        showToast('删除失败，请稍后重试', 'error');
       }
     }
 
@@ -1588,6 +1590,7 @@
             closeImportModal();
           }, 2000);
         } else {
+          // 处理验证失败的情况（code === 400）
           const resultDiv = document.getElementById('importResult');
           safeDOM.empty(resultDiv);
           
@@ -1598,10 +1601,38 @@
             },
             children: [
               safeDOM.createElement('strong', { text: '✗ 导入失败' }),
-              safeDOM.createElement('p', { text: result.message || '未知错误' })
+              document.createElement('br'),
+              safeDOM.createElement('p', { 
+                text: result.message || '未知错误',
+                attrs: { style: 'margin: 0.5rem 0;' }
+              })
             ]
           });
           resultDiv.appendChild(errorDiv);
+          
+          // 显示具体的错误列表
+          if (result.data && result.data.errors && result.data.errors.length > 0) {
+            const errorsDiv = safeDOM.createElement('div', {
+              attrs: {
+                style: 'margin-top: 0.5rem; max-height: 200px; overflow-y: auto; font-size: 0.85rem; background: rgba(255,255,255,0.1); padding: 0.75rem; border-radius: 4px;'
+              }
+            });
+            
+            safeDOM.createElement('div', {
+              text: '错误详情：',
+              attrs: { style: 'font-weight: bold; margin-bottom: 0.5rem;' }
+            });
+            
+            result.data.errors.forEach(e => {
+              const errorItem = safeDOM.createElement('div', { 
+                text: `• ${e}`,
+                attrs: { style: 'margin: 0.25rem 0;' }
+              });
+              errorsDiv.appendChild(errorItem);
+            });
+            
+            resultDiv.appendChild(errorsDiv);
+          }
         }
         resultDiv.style.display = 'block';
         btn.disabled = false;

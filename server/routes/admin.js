@@ -411,7 +411,7 @@ router.put('/students/:id', authenticateProject, requireProjectAdmin, adminModif
  */
 router.delete('/students/:id', authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
-    const { User } = req.projectModels;
+    const { User, Selection } = req.projectModels;
     const id = req.params.id;
 
     const student = await User.findByPk(id);
@@ -419,11 +419,17 @@ router.delete('/students/:id', authenticateProject, requireProjectAdmin, adminMo
       return error(res, '学生不存在');
     }
 
+    // 先删除该学生的所有选科记录
+    await Selection.destroy({
+      where: { userId: id }
+    });
+
+    // 然后删除学生
     await student.destroy();
     success(res, null, '删除成功');
   } catch (err) {
     console.error('删除学生失败:', err);
-    error(res, '删除失败', 500);
+    error(res, '删除失败: ' + err.message, 500);
   }
 });
 
