@@ -527,9 +527,19 @@
           document.getElementById('defaultMaxProjects').value = configs.default_max_projects?.value || 3;
           const domainsValue = configs.allowed_email_domains?.value || '';
           document.getElementById('allowedEmailDomains').value = domainsValue;
-          document.getElementById('registrationOpen').checked = configs.registration_open !== 'false';
-          document.getElementById('captchaEnabled').checked = configs.captcha_enabled === 'true';
-          
+
+          // 修复：正确读取配置值
+          const registrationOpenValue = configs.registration_open?.value || 'true';
+          const captchaEnabledValue = configs.captcha_enabled?.value || 'false';
+
+          document.getElementById('registrationOpen').checked = registrationOpenValue === 'true';
+          document.getElementById('captchaEnabled').checked = captchaEnabledValue === 'true';
+
+          console.log('配置加载成功:', {
+            registration_open: registrationOpenValue,
+            captcha_enabled: captchaEnabledValue
+          });
+
           // 保存允许的邮箱域名列表
           allowedEmailDomains = domainsValue ? domainsValue.split(',').map(d => d.trim()).filter(d => d) : [];
         }
@@ -544,6 +554,13 @@
         'registration_open': '注册开关',
         'captcha_enabled': '验证码'
       };
+      const descriptions = {
+        'registration_open': '平台注册开关',
+        'captcha_enabled': '验证码开关'
+      };
+
+      console.log('更新配置:', { key, value });
+
       try {
         const response = await fetch('/api/platform/superadmin/config', {
           method: 'PUT',
@@ -552,11 +569,16 @@
             'Authorization': 'Bearer ' + token
           },
           body: JSON.stringify({
-            key,
-            value: value.toString()
+            [key]: {
+              value: value.toString(),
+              description: descriptions[key] || ''
+            }
           })
         });
         const result = await response.json();
+
+        console.log('更新配置响应:', result);
+
         if (result.code === 200) {
           showToast(`${keyNames[key] || key} 已${value ? '开启' : '关闭'}`, 'success');
         } else {

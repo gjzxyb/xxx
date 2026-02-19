@@ -432,11 +432,25 @@
             window.location.href = 'dashboard.html';
           }
         } else {
-          alert(result.message || '登录失败');
+          // 显示详细的错误信息
+          let errorMessage = result.message || '登录失败';
+
+          // 如果有剩余尝试次数，显示提示
+          if (result.remainingAttempts !== undefined && result.remainingAttempts > 0) {
+            errorMessage += `\n剩余尝试次数: ${result.remainingAttempts}`;
+          }
+
+          // 如果账号被锁定，显示锁定时间
+          if (result.code === 423 && result.lockedUntil) {
+            const lockTime = new Date(result.lockedUntil).toLocaleTimeString('zh-CN');
+            errorMessage = `账号已被锁定\n请在 ${lockTime} 后重试`;
+          }
+
+          alert(errorMessage);
         }
       } catch (error) {
         console.error('登录错误:', error);
-        alert('登录失败，请稍后重试');
+        alert('网络连接失败，请检查网络后重试');
       }
     });
 

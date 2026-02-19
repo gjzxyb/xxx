@@ -121,6 +121,21 @@ const validateSelectionSubmit = [
       }
       return true;
     }),
+  // 安全性：防止选择首选科目作为再选科目
+  body('electiveOne')
+    .custom((value, { req }) => {
+      if (value === req.body.physicsOrHistory) {
+        throw new Error('再选科目不能与首选科目相同');
+      }
+      return true;
+    }),
+  body('electiveTwo')
+    .custom((value, { req }) => {
+      if (value === req.body.physicsOrHistory) {
+        throw new Error('再选科目不能与首选科目相同');
+      }
+      return true;
+    }),
   handleValidationErrors
 ];
 

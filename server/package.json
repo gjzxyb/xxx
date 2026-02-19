@@ -1,14 +1,16 @@
 {
   "name": "student-selection-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "学生分科自选系统后端 - 新高考3+1+2模式",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
     "dev": "node app.js",
-    "test": "jest --coverage",
+    "test": "jest --coverage --verbose",
     "test:watch": "jest --watch",
-    "test:unit": "jest --testPathPattern=__tests__/unit"
+    "test:unit": "jest --testPathPattern=__tests__/unit",
+    "test:integration": "jest --testPathPattern=__tests__/integration",
+    "test:security": "jest --testPathPattern=__tests__/security"
   },
   "dependencies": {
     "archiver": "^7.0.1",
@@ -23,6 +25,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.7",
     "rotating-file-stream": "^3.2.8",
     "sequelize": "^6.35.0",
     "sqlite3": "^5.1.6",
@@ -31,7 +34,8 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "nodemon": "^3.0.2"
   },
   "jest": {
     "testEnvironment": "node",
@@ -40,17 +44,27 @@
       "**/*.js",
       "!node_modules/**",
       "!coverage/**",
-      "!__tests__/**"
+      "!__tests__/**",
+      "!app.js"
     ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 60,
+        "functions": 60,
+        "lines": 60,
+        "statements": 60
+      }
+    },
     "testMatch": [
       "**/__tests__/**/*.test.js"
-    ]
+    ],
+    "setupFilesAfterEnv": ["<rootDir>/__tests__/setup.js"]
   },
   "keywords": [
     "student",
     "selection",
     "education"
   ],
-  "author": "",
-  "license": "ISC"
+  "author": "开发者何夕2077",
+  "license": "MIT"
 }

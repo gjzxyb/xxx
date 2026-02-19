@@ -192,7 +192,7 @@ router.post('/login', async (req, res) => {
       const result = loginAttemptTracker.recordFailure(lockIdentifier);
       return res.status(result.locked ? 423 : 401).json({
         code: result.locked ? 423 : 401,
-        message: result.message,
+        message: result.locked ? result.message : '邮箱或密码错误',
         remainingAttempts: result.remainingAttempts,
         lockedUntil: result.lockedUntil
       });
@@ -205,7 +205,7 @@ router.post('/login', async (req, res) => {
       const result = loginAttemptTracker.recordFailure(lockIdentifier);
       return res.status(result.locked ? 423 : 401).json({
         code: result.locked ? 423 : 401,
-        message: result.message,
+        message: result.locked ? result.message : '邮箱或密码错误',
         remainingAttempts: result.remainingAttempts,
         lockedUntil: result.lockedUntil
       });

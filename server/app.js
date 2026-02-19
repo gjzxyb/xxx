@@ -304,6 +304,10 @@ app.use(errorHandler);
 
 // 初始化数据
 async function initializeData() {
+  // 初始化Redis缓存
+  const { initRedis } = require('./config/redis');
+  await initRedis();
+
   // 初始化邮件服务
   const emailService = require('./utils/emailService');
   await emailService.initialize();
@@ -392,6 +396,10 @@ async function gracefulShutdown(signal) {
       console.log('✓ HTTP 服务器已关闭');
 
       try {
+        // 关闭Redis连接
+        const { closeRedis } = require('./config/redis');
+        await closeRedis();
+
         // 关闭数据库连接
         await sequelize.close();
         console.log('✓ 数据库连接已关闭');

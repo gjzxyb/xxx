@@ -5,15 +5,27 @@ const { projectDb } = require('../middleware/projectDb');
 const { authenticateProject, requireProjectAdmin } = require('../middleware/projectAuth');
 const { validateSubject, validateIdParam } = require('../middleware/validation');
 const { adminLimiter, adminCreateLimiter, adminModifyLimiter } = require('../middleware/rateLimit');
+const cacheService = require('../lib/CacheService');
 
 /**
  * 获取所有科目
  * GET /api/subjects
+ * 优化：添加Redis缓存，5分钟过期
  */
 router.get('/', projectDb, authenticateProject, adminLimiter, async (req, res) => {
   try {
     const { category, active } = req.query;
     const { Subject } = req.projectModels;
+    const projectId = req.projectId;
+
+    // 生成缓存键（包含查询参数）
+    const cacheKey = cacheService.projectKey(projectId, `subjects:${category || 'all'}:${active || 'all'}`);
+
+    // 尝试从缓存获取
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      return success(res, cached);
+    }
 
     const where = {};
     if (category) where.category = category;
@@ -23,6 +35,9 @@ router.get('/', projectDb, authenticateProject, adminLimiter, async (req, res) =
       where,
       order: [['category', 'ASC'], ['name', 'ASC']]
     });
+
+    // 写入缓存（5分钟）
+    await cacheService.set(cacheKey, subjects, 300);
 
     success(res, subjects);
   } catch (err) {
@@ -59,6 +74,7 @@ router.post('/', projectDb, authenticateProject, requireProjectAdmin, adminCreat
   try {
     const { name, category, description, maxCapacity } = req.body;
     const { Subject } = req.projectModels;
+    const projectId = req.projectId;
 
     if (!name || !category) {
       return error(res, '科目名称和类别不能为空');
@@ -73,10 +89,29 @@ router.post('/', projectDb, authenticateProject, requireProjectAdmin, adminCreat
       currentCount: 0
     });
 
-    success(res, subject, '科目创建成功');
+    // 清除科目列表缓存
+    await cacheService.delPattern(cacheService.projectKey(projectId, 'subjects:*'));
+    // 清除统计缓存
+    await cacheService.del(cacheService.projectKey(projectId, 'stats'));
+
+    success(res, subject, '科目创建成功', 201);
   } catch (err) {
-    console.error('创建科目错误:', err);
-    error(res, '创建科目失败', 500);
+    // 处理唯一约束违反（科目名称重复）
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      console.warn(`[业务警告] 尝试创建重复科目: ${req.body.name}`);
+      return error(res, '科目名称已存在，请使用其他名称', 409);
+    }
+
+    // 处理验证错误
+    if (err.name === 'SequelizeValidationError') {
+      const messages = err.errors.map(e => e.message).join(', ');
+      console.warn(`[业务警告] 科目数据验证失败: ${messages}`);
+      return error(res, `数据验证失败: ${messages}`, 400);
+    }
+
+    // 其他未知错误（真正的系统错误才打印堆栈）
+    console.error('[系统错误] 创建科目失败:', err);
+    error(res, '创建科目失败，请稍后重试', 500);
   }
 });
 
@@ -88,6 +123,7 @@ router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProje
   try {
     const { name, category, description, maxCapacity, isActive } = req.body;
     const { Subject } = req.projectModels;
+    const projectId = req.projectId;
 
     const subject = await Subject.findByPk(req.params.id);
     if (!subject) {
@@ -101,6 +137,11 @@ router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProje
       maxCapacity: maxCapacity !== undefined ? maxCapacity : subject.maxCapacity,
       isActive: isActive !== undefined ? isActive : subject.isActive
     });
+
+    // 清除科目列表缓存
+    await cacheService.delPattern(cacheService.projectKey(projectId, 'subjects:*'));
+    // 清除统计缓存
+    await cacheService.del(cacheService.projectKey(projectId, 'stats'));
 
     success(res, subject, '科目更新成功');
   } catch (err) {
@@ -116,6 +157,7 @@ router.put('/:id', validateIdParam, projectDb, authenticateProject, requireProje
 router.delete('/:id', validateIdParam, projectDb, authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
     const { Subject } = req.projectModels;
+    const projectId = req.projectId;
     const subject = await Subject.findByPk(req.params.id);
 
     if (!subject) {
@@ -123,6 +165,12 @@ router.delete('/:id', validateIdParam, projectDb, authenticateProject, requirePr
     }
 
     await subject.destroy();
+
+    // 清除科目列表缓存
+    await cacheService.delPattern(cacheService.projectKey(projectId, 'subjects:*'));
+    // 清除统计缓存
+    await cacheService.del(cacheService.projectKey(projectId, 'stats'));
+
     success(res, null, '科目删除成功');
   } catch (err) {
     console.error('删除科目错误:', err);

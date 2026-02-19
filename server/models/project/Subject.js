@@ -44,7 +44,26 @@ module.exports = (sequelize) => {
       comment: '是否启用'
     }
   }, {
-    tableName: 'subjects'
+    tableName: 'subjects',
+    hooks: {
+      // 安全性：防止容量超限的竞态条件
+      beforeUpdate: async (subject, options) => {
+        if (subject.changed('currentCount')) {
+          // 检查是否超过容量限制
+          if (subject.maxCapacity > 0 && subject.currentCount > subject.maxCapacity) {
+            throw new Error('科目容量已满，无法继续选择');
+          }
+        }
+      }
+    },
+    validate: {
+      // 数据完整性验证
+      capacityCheck() {
+        if (this.maxCapacity > 0 && this.currentCount > this.maxCapacity) {
+          throw new Error('当前人数不能超过最大容量');
+        }
+      }
+    }
   });
 
   return Subject;

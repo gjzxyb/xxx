@@ -436,7 +436,7 @@ router.delete('/students/:id', authenticateProject, requireProjectAdmin, adminMo
 /**
  * 重置学生密码
  * POST /api/admin/students/:id/reset-password
- * 安全性：不返回明文密码，建议通过邮件或其他安全方式通知学生
+ * 安全性：不返回明文密码，通过邮件通知学生
  */
 router.post('/students/:id/reset-password', authenticateProject, requireProjectAdmin, adminModifyLimiter, async (req, res) => {
   try {
@@ -456,13 +456,36 @@ router.post('/students/:id/reset-password', authenticateProject, requireProjectA
       password: newPassword
     });
 
-    // 返回新密码给管理员，由管理员通知学生
-    // TODO: 实现邮件通知功能，将新密码发送到学生邮箱
-    success(res, {
+    // 尝试发送邮件通知
+    const emailService = require('../utils/emailService');
+    let emailSent = false;
+    let emailError = null;
+
+    if (student.email && emailService.isAvailable()) {
+      try {
+        await emailService.sendPasswordReset(student.email, student.studentId, newPassword);
+        emailSent = true;
+      } catch (err) {
+        console.error('发送密码重置邮件失败:', err);
+        emailError = err.message;
+      }
+    }
+
+    // 返回结果
+    const responseData = {
       studentId: student.studentId,
       newPassword: newPassword,
-      message: '密码已重置，请将新密码告知学生'
-    }, '密码已重置成功');
+      emailSent: emailSent,
+      message: emailSent
+        ? '密码已重置，新密码已发送到学生邮箱'
+        : '密码已重置，请将新密码告知学生'
+    };
+
+    if (emailError) {
+      responseData.emailError = emailError;
+    }
+
+    success(res, responseData, '密码已重置成功');
   } catch (err) {
     console.error('重置密码失败:', err);
     error(res, '重置失败', 500);
