@@ -613,7 +613,23 @@
             'confirmed': '已确认',
             'cancelled': '已取消'
           };
-          document.getElementById('statStatus').textContent = statusMap[sel.status] || '-';
+          // 更新选科状态，包含提交时间
+          const statusElement = document.getElementById('statStatus');
+          const statusText = statusMap[sel.status] || '-';
+          const submitTimeText = sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '';
+
+          // 清空并重新构建内容
+          statusElement.innerHTML = '';
+          const statusDiv = document.createElement('div');
+          statusDiv.textContent = statusText;
+          statusElement.appendChild(statusDiv);
+
+          if (submitTimeText) {
+            const timeDiv = document.createElement('div');
+            timeDiv.style.cssText = 'font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; font-weight: normal;';
+            timeDiv.textContent = submitTimeText;
+            statusElement.appendChild(timeDiv);
+          }
 
           // 获取组合分析
           const analysis = getCombinationAnalysis(
@@ -627,178 +643,14 @@
         // 更新选科详情 - 使用安全的DOM操作防止XSS
         safeDOM.empty(content);
 
-        const gridContainer = document.createElement('div');
-        // 响应式网格：移动端单列，桌面端双列
-        const isMobile = window.innerWidth <= 768;
-        gridContainer.style.cssText = `
-          display: grid;
-          grid-template-columns: ${isMobile ? '1fr' : '1fr 1fr'};
-          gap: 1.5rem;
-        `;
+        // 组合分析指南 - 全宽显示
+        const analysisContainer = document.createElement('div');
+        analysisContainer.style.cssText = 'width: 100%;';
 
-        // 监听窗口大小变化，动态调整布局
-        window.addEventListener('resize', () => {
-          const isMobileNow = window.innerWidth <= 768;
-          gridContainer.style.gridTemplateColumns = isMobileNow ? '1fr' : '1fr 1fr';
-        });
-
-        // 左侧：已选科目 + 选科说明
-        const leftCol = document.createElement('div');
-
-        // 已选科目标题
-        const leftTitle = document.createElement('h4');
-        leftTitle.style.cssText = 'margin-bottom: 1.5rem; color: var(--text-primary); font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;';
-        leftTitle.innerHTML = '<span style="font-size: 1.5rem;">📝</span> 已选科目';
-        leftCol.appendChild(leftTitle);
-
-        // 选科详情卡片 - 玻璃态效果
-        const selectionDisplay = document.createElement('div');
-        selectionDisplay.className = 'selection-display';
-        selectionDisplay.style.cssText = `
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);
-          backdrop-filter: blur(10px);
-          padding: 2rem;
-          border-radius: 16px;
-          margin-bottom: 1.5rem;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        `;
-
-        // 首选科目
-        const phItem = document.createElement('div');
-        phItem.className = 'subject-item physics-history';
-        phItem.style.cssText = 'margin-bottom: 1.5rem;';
-        const phLabel = document.createElement('label');
-        phLabel.style.cssText = 'font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.9rem;';
-        phLabel.innerHTML = '<span style="font-size: 1.2rem;">🎯</span> 首选科目';
-        const phValue = document.createElement('div');
-        phValue.className = 'value';
-        phValue.style.cssText = `
-          font-size: 1.5rem;
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-        `;
-        safeDOM.setText(phValue, sel.physicsHistorySubject?.name || '-');
-        phItem.appendChild(phLabel);
-        phItem.appendChild(phValue);
-        selectionDisplay.appendChild(phItem);
-
-        // 再选科目
-        const electiveItem = document.createElement('div');
-        electiveItem.className = 'subject-item electives';
-        electiveItem.style.cssText = 'margin-bottom: 1.5rem;';
-        const electiveLabel = document.createElement('label');
-        electiveLabel.style.cssText = 'font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.9rem;';
-        electiveLabel.innerHTML = '<span style="font-size: 1.2rem;">✨</span> 再选科目';
-        const electiveValue = document.createElement('div');
-        electiveValue.className = 'value';
-        electiveValue.style.cssText = `
-          font-size: 1.5rem;
-          background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-        `;
-        safeDOM.setText(electiveValue, `${sel.electiveOneSubject?.name || '-'} + ${sel.electiveTwoSubject?.name || '-'}`);
-        electiveItem.appendChild(electiveLabel);
-        electiveItem.appendChild(electiveValue);
-        selectionDisplay.appendChild(electiveItem);
-
-        // 提交时间
-        const submitTime = document.createElement('div');
-        submitTime.className = 'submit-time';
-        submitTime.style.cssText = `
-          font-size: 0.85rem;
-          color: var(--text-muted);
-          padding-top: 1.25rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        `;
-        submitTime.innerHTML = '<span style="font-size: 1rem;">🕐</span>';
-        const timeText = document.createElement('span');
-        safeDOM.setText(timeText, '提交时间: ' + (sel.submittedAt ? new Date(sel.submittedAt).toLocaleString() : '-'));
-        submitTime.appendChild(timeText);
-        selectionDisplay.appendChild(submitTime);
-
-        leftCol.appendChild(selectionDisplay);
-
-        // 修改选科按钮 - 渐变效果
-        const modifyBtn = document.createElement('a');
-        modifyBtn.href = '/selection.html?projectId=' + encodeURIComponent(projectId);
-        modifyBtn.className = 'btn btn-secondary';
-        modifyBtn.style.cssText = `
-          width: 100%;
-          margin-bottom: 1.5rem;
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-          border: none;
-          padding: 1rem;
-          font-weight: 600;
-          font-size: 1rem;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        `;
-        modifyBtn.textContent = '✏️ 修改选科';
-        modifyBtn.addEventListener('mouseenter', () => {
-          modifyBtn.style.transform = 'translateY(-2px)';
-          modifyBtn.style.boxShadow = '0 6px 20px rgba(99, 102, 241, 0.4)';
-        });
-        modifyBtn.addEventListener('mouseleave', () => {
-          modifyBtn.style.transform = 'translateY(0)';
-          modifyBtn.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.3)';
-        });
-        leftCol.appendChild(modifyBtn);
-
-        // 选科说明 - 优化设计
-        const infoBox = document.createElement('div');
-        infoBox.style.cssText = `
-          background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%);
-          backdrop-filter: blur(10px);
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid rgba(14, 165, 233, 0.2);
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-        `;
-        infoBox.innerHTML = `
-          <h4 style="margin-bottom: 1.25rem; color: var(--primary); font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 1.3rem;">📖</span> 新高考 3+1+2 选科说明
-          </h4>
-          <div style="color: var(--text-secondary); line-height: 2; font-size: 0.95rem;">
-            <p style="margin-bottom: 0.75rem; display: flex; align-items: start; gap: 0.75rem;">
-              <span style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">1</span>
-              <span><strong style="color: var(--primary);">首选科目：</strong>物理、历史（二选一）</span>
-            </p>
-            <p style="margin-bottom: 0.75rem; display: flex; align-items: start; gap: 0.75rem;">
-              <span style="background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">2</span>
-              <span><strong style="color: var(--primary);">再选科目：</strong>化学、生物、政治、地理（四选二）</span>
-            </p>
-            <p style="margin-bottom: 1.25rem; display: flex; align-items: start; gap: 0.75rem;">
-              <span style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">3</span>
-              <span><strong style="color: var(--primary);">必考科目：</strong>语文、数学、外语（无需选择）</span>
-            </p>
-            <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--warning); display: flex; align-items: start; gap: 0.75rem;">
-              <span style="font-size: 1.2rem; flex-shrink: 0;">⚠️</span>
-              <span style="color: var(--text-primary); font-size: 0.9rem; line-height: 1.6;">选科结果将影响未来高考和大学专业选择，请慎重考虑！</span>
-            </div>
-          </div>
-        `;
-        leftCol.appendChild(infoBox);
-
-        gridContainer.appendChild(leftCol);
-
-        // 右侧：组合分析指南
-        const rightCol = document.createElement('div');
-        const rightTitle = document.createElement('h4');
-        rightTitle.style.cssText = 'margin-bottom: 1.5rem; color: var(--text-primary); font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;';
-        rightTitle.innerHTML = '<span style="font-size: 1.5rem;">🎯</span> 组合分析指南';
-        rightCol.appendChild(rightTitle);
+        const analysisTitle = document.createElement('h4');
+        analysisTitle.style.cssText = 'margin-bottom: 1.5rem; color: var(--text-primary); font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;';
+        analysisTitle.innerHTML = '<span style="font-size: 1.5rem;">🎯</span> 组合分析指南';
+        analysisContainer.appendChild(analysisTitle);
 
         if (analysis) {
           const analysisBox = document.createElement('div');
@@ -947,7 +799,7 @@
           careersBox.appendChild(careersContent);
           analysisBox.appendChild(careersBox);
 
-          rightCol.appendChild(analysisBox);
+          analysisContainer.appendChild(analysisBox);
         } else {
           const emptyBox = document.createElement('div');
           emptyBox.style.cssText = 'background: var(--bg-secondary); padding: 2rem; border-radius: 8px; text-align: center; color: var(--text-muted);';
@@ -958,11 +810,10 @@
           emptyText.textContent = '暂无该组合的分析数据';
           emptyBox.appendChild(emptyIcon);
           emptyBox.appendChild(emptyText);
-          rightCol.appendChild(emptyBox);
+          analysisContainer.appendChild(emptyBox);
         }
 
-        gridContainer.appendChild(rightCol);
-        content.appendChild(gridContainer);
+        content.appendChild(analysisContainer);
         } else {
           // 未选科时的统计卡片显示
           document.getElementById('statPhysicsHistory').textContent = '未选择';
