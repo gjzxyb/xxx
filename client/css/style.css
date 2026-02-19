@@ -6,62 +6,52 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
-/* CSS Variables - 蓝色科技风主题 */
+/* CSS Variables - 霓虹紫青渐变「未来学院」科技风 */
 :root {
-  /* 主色调 - 科技蓝 */
-  --primary: #0ea5e9;
-  /* 天空蓝 */
-  --primary-dark: #0284c7;
-  /* 深蓝 */
-  --primary-light: #38bdf8;
-  /* 浅蓝 */
+  /* 主色调 - 霓虹紫蓝渐变 */
+  --primary: #7c3aed;           /* 活力紫 */
+  --primary-dark: #6d28d9;
+  --primary-light: #a78bfa;
 
-  /* 辅助强调色 - 青色点缀 */
-  --accent: #06b6d4;
-  /* 青色 */
+  /* 辅助强调色 - 青绿活力 */
+  --accent: #06b6d4;            /* 赛博青 */
   --accent-light: #22d3ee;
-  /* 亮青色 */
   --accent-glow: rgba(6, 182, 212, 0.4);
 
-  /* 功能色 */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #3b82f6;
+  /* 功能色优化 */
+  --success: #10b981;           /* 保持 */
+  --warning: #fbbf24;           /* 更温暖 */
+  --danger: #f43f5e;            /* 玫红色 */
+  --info: #38bdf8;              /* 天空蓝 */
 
-  /* 背景层次 - 简约深色 */
-  --bg-primary: #0f172a;
-  /* 深蓝灰底色 */
-  --bg-secondary: #1e293b;
-  /* 次级背景 */
-  --bg-card: rgba(30, 41, 59, 0.6);
-  /* 卡片背景 */
-  --bg-hover: #334155;
-  /* 悬停背景 */
-  --bg-glass: rgba(30, 41, 59, 0.7);
-  /* 毛玻璃效果 */
+  /* 背景层次 - 深邃星空感 */
+  --bg-primary: #0a0e1a;        /* 更深的宇宙底色 */
+  --bg-secondary: #111827;
+  --bg-card: #1a1f35;           /* 带紫调的卡片 */
+  --bg-hover: #252d4a;
+  --bg-glass: rgba(26, 31, 53, 0.8);
 
   /* 文字色彩 */
   --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
   --text-accent: var(--accent-light);
 
   /* 边框和发光 */
-  --border-color: rgba(14, 165, 233, 0.15);
-  --border-glow: rgba(14, 165, 233, 0.4);
+  --border-color: rgba(124, 58, 237, 0.2);
+  --border-glow: rgba(124, 58, 237, 0.5);
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.25);
+  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.3);
 
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
 
   /* 渐变预设 */
-  --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-  --gradient-card: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-  --gradient-bg: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  --gradient-card: linear-gradient(145deg, rgba(26, 31, 53, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%);
+  --gradient-bg: linear-gradient(180deg, #0a0e1a 0%, #1a1047 50%, #0a0e1a 100%);
 
   --transition: all 0.3s ease;
 }
@@ -83,14 +73,14 @@ body {
   line-height: 1.6;
 }
 
-/* 科技背景光晕 */
+/* 星空背景光晕 - 霓虹紫青 */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 30%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
   pointer-events: none;
   z-index: -1;
 }
@@ -140,23 +130,26 @@ a:hover {
   padding: 0 1.5rem;
 }
 
-/* Card - 简约蓝色科技风 */
+/* Card - 霓虹紫青玻璃态 */
 .card {
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--bg-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius);
   padding: 1.75rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(14, 165, 233, 0.15);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(124, 58, 237, 0.15);
   transition: var(--transition);
 }
 
 .card:hover {
-  border-color: rgba(14, 165, 233, 0.3);
+  border-color: rgba(124, 58, 237, 0.4);
   box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.2),
-    0 0 20px rgba(14, 165, 233, 0.15);
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(124, 58, 237, 0.2),
+    var(--shadow-glow);
   transform: translateY(-3px);
 }
 
@@ -337,13 +330,13 @@ a:hover {
   padding: 2rem 0;
 }
 
-/* Navbar - 现代简约蓝色科技风 */
+/* Navbar - 霓虹紫青玻璃态 */
 .navbar {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(10, 14, 26, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(14, 165, 233, 0.2);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -397,13 +390,13 @@ a:hover {
 
 .nav-link:hover {
   color: var(--primary-light);
-  background: rgba(14, 165, 233, 0.1);
+  background: rgba(124, 58, 237, 0.1);
 }
 
 .nav-link.active {
   color: var(--primary-light);
-  background: rgba(14, 165, 233, 0.15);
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+  background: rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
 }
 
 .nav-link.active::after {
@@ -423,15 +416,15 @@ a:hover {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
-  background: rgba(14, 165, 233, 0.08);
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.2);
   border-radius: var(--radius);
   transition: var(--transition);
 }
 
 .nav-user:hover {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: rgba(14, 165, 233, 0.3);
+  background: rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.3);
 }
 
 .nav-user-avatar {
@@ -445,7 +438,7 @@ a:hover {
   font-weight: 600;
   font-size: 0.95rem;
   color: white;
-  box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.4);
 }
 
 /* Subject Cards */
@@ -670,7 +663,7 @@ a:hover {
 }
 
 /* Stats Cards */
-/* Statistics Grid - 蓝色科技风 */
+/* Statistics Grid - 霓虹紫青科技风 */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -679,9 +672,9 @@ a:hover {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  border: 1px solid rgba(124, 58, 237, 0.2);
   border-radius: var(--radius);
   padding: 1.75rem;
   text-align: center;
@@ -703,10 +696,10 @@ a:hover {
 }
 
 .stat-card:hover {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%);
-  border-color: rgba(14, 165, 233, 0.4);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%);
+  border-color: rgba(124, 58, 237, 0.4);
   transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2);
+  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);
 }
 
 .stat-card:hover::before {
