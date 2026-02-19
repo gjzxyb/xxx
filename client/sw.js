@@ -84,6 +84,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 跳过外部字体资源（避免 CSP 冲突）
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // API请求 - 网络优先，失败时使用缓存
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request));

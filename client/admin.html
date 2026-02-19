@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 分科自选系统</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0ea5e9">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1710,5 +1716,8 @@
     loadOverview();
     loadRegistrationStatus(); // 加载注册开关状态
   </script>
+
+  <!-- PWA Service Worker -->
+  <script src="/js/pwa.js"></script>
 </body>
 </html>

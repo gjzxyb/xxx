@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>我的项目 - 分科自选 SaaS 平台</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0ea5e9">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+
   <link rel="stylesheet" href="/platform/css/style.css">
   <link rel="stylesheet" href="/platform/css/dashboard.css">
   <script src="/js/csrf.js"></script>
@@ -911,5 +917,8 @@
     setInterval(loadProjects, 30000);
     loadProjects();
   </script>
+
+  <!-- PWA Service Worker -->
+  <script src="/js/pwa.js"></script>
 </body>
 </html>

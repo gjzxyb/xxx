@@ -117,10 +117,11 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"], // 允许 CDN 脚本
+      scriptSrcAttr: ["'self'", "'unsafe-inline'"], // 允许内联事件处理器（用于动态生成的元素）
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"], // 允许连接到 Google Fonts
       mediaSrc: ["'self'"],
       objectSrc: ["'none'"], // 禁止嵌入对象
       frameSrc: ["'none'"], // 禁止iframe

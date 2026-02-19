@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA 图标生成器</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 1rem;
+    }
+    .preview {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 2rem 0;
+    }
+    .icon-preview {
+      text-align: center;
+    }
+    .icon-preview canvas {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .icon-preview p {
+      margin: 0.5rem 0 0 0;
+      font-size: 0.875rem;
+      color: #666;
+    }
+    button {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #0284c7;
+    }
+    .instructions {
+      background: #f0f9ff;
+      border-left: 4px solid #0ea5e9;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    .instructions h3 {
+      margin-top: 0;
+      color: #0369a1;
+    }
+    .instructions ol {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+    .instructions li {
+      margin: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📱 PWA 图标生成器</h1>
+
+    <div class="instructions">
+      <h3>使用说明</h3>
+      <ol>
+        <li>点击下方的"生成所有图标"按钮</li>
+        <li>右键点击每个图标，选择"图片另存为"</li>
+        <li>保存到 <code>client/icons/</code> 目录，使用对应的文件名</li>
+        <li>刷新浏览器页面，PWA 功能即可正常使用</li>
+      </ol>
+    </div>
+
+    <button onclick="generateAllIcons()">生成所有图标</button>
+
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+
+    function generateIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // 渐变背景
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#0ea5e9');
+      gradient.addColorStop(1, '#6366f1');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // 绘制图标 - 书本符号
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('📚', size / 2, size / 2);
+
+      return canvas;
+    }
+
+    function generateAllIcons() {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+
+      sizes.forEach(size => {
+        const canvas = generateIcon(size);
+        const container = document.createElement('div');
+        container.className = 'icon-preview';
+
+        const p = document.createElement('p');
+        p.textContent = `icon-${size}x${size}.png`;
+
+        container.appendChild(canvas);
+        container.appendChild(p);
+        preview.appendChild(container);
+      });
+
+      // 生成快捷方式图标
+      generateShortcutIcons();
+    }
+
+    function generateShortcutIcons() {
+      const preview = document.getElementById('preview');
+
+      // 选科快捷方式图标
+      const selectionCanvas = document.createElement('canvas');
+      selectionCanvas.width = 96;
+      selectionCanvas.height = 96;
+      const ctx1 = selectionCanvas.getContext('2d');
+      ctx1.fillStyle = '#10b981';
+      ctx1.fillRect(0, 0, 96, 96);
+      ctx1.fillStyle = 'white';
+      ctx1.font = 'bold 48px Arial';
+      ctx1.textAlign = 'center';
+      ctx1.textBaseline = 'middle';
+      ctx1.fillText('✓', 48, 48);
+
+      const container1 = document.createElement('div');
+      container1.className = 'icon-preview';
+      const p1 = document.createElement('p');
+      p1.textContent = 'shortcut-selection.png';
+      container1.appendChild(selectionCanvas);
+      container1.appendChild(p1);
+      preview.appendChild(container1);
+
+      // 个人中心快捷方式图标
+      const profileCanvas = document.createElement('canvas');
+      profileCanvas.width = 96;
+      profileCanvas.height = 96;
+      const ctx2 = profileCanvas.getContext('2d');
+      ctx2.fillStyle = '#8b5cf6';
+      ctx2.fillRect(0, 0, 96, 96);
+      ctx2.fillStyle = 'white';
+      ctx2.font = 'bold 48px Arial';
+      ctx2.textAlign = 'center';
+      ctx2.textBaseline = 'middle';
+      ctx2.fillText('👤', 48, 48);
+
+      const container2 = document.createElement('div');
+      container2.className = 'icon-preview';
+      const p2 = document.createElement('p');
+      p2.textContent = 'shortcut-profile.png';
+      container2.appendChild(profileCanvas);
+      container2.appendChild(p2);
+      preview.appendChild(container2);
+    }
+
+    // 自动生成
+    window.addEventListener('load', generateAllIcons);
+  </script>
+</body>
+</html>

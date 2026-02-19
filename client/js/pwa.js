@@ -229,8 +229,8 @@ function showInstallPrompt() {
         <p>添加到主屏幕，获得更好的体验</p>
       </div>
       <div class="pwa-install-actions">
-        <button onclick="installPWA()">安装</button>
-        <button onclick="dismissInstallPrompt()">不了</button>
+        <button id="pwa-install-btn" class="pwa-install-btn">安装</button>
+        <button id="pwa-dismiss-btn" class="pwa-dismiss-btn">不了</button>
       </div>
     </div>
   `;
@@ -318,6 +318,18 @@ function showInstallPrompt() {
 
   document.head.appendChild(style);
   document.body.appendChild(prompt);
+
+  // 绑定事件监听器
+  const installBtn = document.getElementById('pwa-install-btn');
+  const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+  if (installBtn) {
+    installBtn.addEventListener('click', installPWA);
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', dismissInstallPrompt);
+  }
 }
 
 /**
